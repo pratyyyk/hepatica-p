@@ -12,12 +12,24 @@ os.environ["AUTH_MODE"] = "bff"
 os.environ["ENABLE_DEV_AUTH"] = "true"
 os.environ["SESSION_ENCRYPTION_KEY"] = "test-session-encryption-key"
 os.environ["CORS_ALLOWED_ORIGINS"] = "http://localhost:3000"
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
+from app.core.config import get_settings
+get_settings.cache_clear()
+from app.core.rate_limit import limiter
 from app.db.base import Base
 from app.db.session import engine
 from app.main import app
 
 TEST_DB_PATH = Path("test_hepatica.db")
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    storage = getattr(limiter, "_storage", None)
+    if storage and hasattr(storage, "reset"):
+        storage.reset()
+    yield
 
 
 @pytest.fixture(autouse=True)

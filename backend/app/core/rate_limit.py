@@ -20,4 +20,8 @@ def user_or_ip_key(request: Request) -> str:
     return f"ip:{get_remote_address(request)}"
 
 
-limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+limiter = Limiter(
+    key_func=get_remote_address,
+    headers_enabled=True,
+    enabled=settings.rate_limit_enabled,
+)

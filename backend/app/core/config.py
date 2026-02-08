@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     rate_limit_mutating_per_user: str = "60/minute"
     rate_limit_mutating_per_ip: str = "120/minute"
     rate_limit_read_per_user: str = "180/minute"
+    rate_limit_enabled: bool = True
 
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     journals_path: Path = Path("/Users/praty/journals")
