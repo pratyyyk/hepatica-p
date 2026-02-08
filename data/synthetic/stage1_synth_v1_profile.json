@@ -1,0 +1,49 @@
+{
+  "schema_version": "stage1_synth_v1",
+  "rows": 200000,
+  "seed": 42,
+  "column_count": 26,
+  "risk_tier_distribution": {
+    "HIGH": 0.110195,
+    "LOW": 0.62671,
+    "MODERATE": 0.263095
+  },
+  "split_counts": {
+    "test": 30000,
+    "train": 140000,
+    "val": 30000
+  },
+  "cohort_counts": {
+    "enrichment": 49937,
+    "general_pop": 150063
+  },
+  "latent_stage_counts": {
+    "F0": 188575,
+    "F1": 7102,
+    "F2": 2908,
+    "F3": 1103,
+    "F4": 312
+  },
+  "prevalence": {
+    "type2dm": 0.08949,
+    "hypertension": 0.1364,
+    "dyslipidemia": 0.12725,
+    "obesity_bmi_ge_30": 0.37124,
+    "enrichment_fraction": 0.249685
+  },
+  "correlations": {
+    "fib4_age_years": 0.4982611761949963,
+    "fib4_ast_u_l": 0.8250075681865794,
+    "fib4_platelets_10e9_l": -0.5187585668640581,
+    "latent_total_bilirubin_mg_dl": 0.6686807708130847,
+    "latent_inr": 0.6203236461031092,
+    "latent_albumin_g_dl": -0.4781694412249506,
+    "latent_platelets_10e9_l": -0.558836242985833
+  },
+  "checks": {
+    "risk_tier_window_pass": true,
+    "split_70_15_15_exact": true,
+    "correlation_sanity_pass": true
+  },
+  "dataset_hash_sha256": "2332315c56b844e0ee1ed70d095dca9f389b549b931c91060ddfd83b982b7ad8"
+}

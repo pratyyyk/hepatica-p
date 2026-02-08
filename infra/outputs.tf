@@ -18,12 +18,32 @@ output "cognito_client_id" {
   value = aws_cognito_user_pool_client.doctor_client.id
 }
 
+output "cognito_hosted_ui_domain" {
+  value = "${aws_cognito_user_pool_domain.doctor.domain}.auth.${var.aws_region}.amazoncognito.com"
+}
+
 output "db_endpoint" {
   value = aws_db_instance.postgres.address
 }
 
 output "db_secret_arn" {
   value = aws_secretsmanager_secret.db_connection.arn
+}
+
+output "backend_database_url_secret_arn" {
+  value = aws_secretsmanager_secret.backend_database_url.arn
+}
+
+output "backend_session_encryption_key_secret_arn" {
+  value = aws_secretsmanager_secret.backend_session_encryption_key.arn
+}
+
+output "backend_service_url" {
+  value = var.enable_app_hosting ? aws_apprunner_service.backend[0].service_url : null
+}
+
+output "frontend_service_url" {
+  value = var.enable_app_hosting ? aws_apprunner_service.frontend[0].service_url : null
 }
 
 output "sagemaker_endpoint_name" {

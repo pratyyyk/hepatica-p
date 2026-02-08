@@ -1,0 +1,45 @@
+model_name: clinical-stage1-gbdt
+schema_version: stage1_synth_v1
+seed: 42
+
+data_path: /Users/praty/hepatica-p/data/synthetic/stage1_synth_v1.parquet
+schema_path: /Users/praty/hepatica-p/data/synthetic/stage1_synth_v1_schema.json
+artifact_dir: /Users/praty/hepatica-p/ml/artifacts/stage1
+
+expected_rows: 200000
+expected_split_counts:
+  train: 140000
+  val: 30000
+  test: 30000
+
+models:
+  classifier:
+    learning_rate: 0.05
+    max_iter: 500
+    max_depth: 6
+    min_samples_leaf: 80
+    l2_regularization: 0.1
+    class_weight: balanced
+    random_state: 42
+  classifier_calibration_cv: 3
+  regressor:
+    learning_rate: 0.05
+    max_iter: 500
+    max_depth: 6
+    min_samples_leaf: 60
+    l2_regularization: 0.1
+    random_state: 42
+
+gates:
+  val_macro_f1_min: 0.93
+  val_recall_high_min: 0.90
+  val_recall_moderate_min: 0.88
+  test_macro_f1_min: 0.91
+  val_probability_mae_max: 0.025
+  val_latent_mae_max: 0.060
+  val_ece_max: 0.05
+
+explainability:
+  permutation_n_repeats: 3
+  permutation_max_samples: 15000
+  local_top_n: 100

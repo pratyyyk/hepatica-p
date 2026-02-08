@@ -1,0 +1,164 @@
+{
+  "schema_version": "stage1_synth_v1",
+  "description": "Synthetic Stage 1 clinical dataset with 16 base parameters and dual labels.",
+  "parameters": [
+    {
+      "name": "age_years",
+      "type": "int64",
+      "bounds": [
+        18,
+        90
+      ]
+    },
+    {
+      "name": "sex",
+      "type": "string",
+      "allowed": [
+        "F",
+        "M"
+      ]
+    },
+    {
+      "name": "bmi",
+      "type": "float64",
+      "bounds": [
+        15,
+        60
+      ]
+    },
+    {
+      "name": "type2dm",
+      "type": "bool"
+    },
+    {
+      "name": "hypertension",
+      "type": "bool"
+    },
+    {
+      "name": "dyslipidemia",
+      "type": "bool"
+    },
+    {
+      "name": "ast_u_l",
+      "type": "float64",
+      "bounds": [
+        10,
+        500
+      ]
+    },
+    {
+      "name": "alt_u_l",
+      "type": "float64",
+      "bounds": [
+        8,
+        500
+      ]
+    },
+    {
+      "name": "platelets_10e9_l",
+      "type": "float64",
+      "bounds": [
+        40,
+        600
+      ]
+    },
+    {
+      "name": "ast_uln_u_l",
+      "type": "float64",
+      "bounds": [
+        25,
+        55
+      ]
+    },
+    {
+      "name": "albumin_g_dl",
+      "type": "float64",
+      "bounds": [
+        2.0,
+        5.5
+      ]
+    },
+    {
+      "name": "total_bilirubin_mg_dl",
+      "type": "float64",
+      "bounds": [
+        0.1,
+        8.0
+      ]
+    },
+    {
+      "name": "ggt_u_l",
+      "type": "float64",
+      "bounds": [
+        10,
+        800
+      ]
+    },
+    {
+      "name": "inr",
+      "type": "float64",
+      "bounds": [
+        0.8,
+        2.5
+      ]
+    },
+    {
+      "name": "hba1c_pct",
+      "type": "float64",
+      "bounds": [
+        4.5,
+        12.0
+      ]
+    },
+    {
+      "name": "triglycerides_mg_dl",
+      "type": "float64",
+      "bounds": [
+        50,
+        700
+      ]
+    }
+  ],
+  "derived_fields": [
+    "fib4",
+    "apri",
+    "risk_tier_rule",
+    "probability_rule",
+    "latent_fibrosis_score",
+    "latent_stage"
+  ],
+  "meta_fields": [
+    "split",
+    "cohort_source",
+    "seed",
+    "schema_version"
+  ],
+  "column_order": [
+    "age_years",
+    "sex",
+    "bmi",
+    "type2dm",
+    "hypertension",
+    "dyslipidemia",
+    "ast_u_l",
+    "alt_u_l",
+    "platelets_10e9_l",
+    "ast_uln_u_l",
+    "albumin_g_dl",
+    "total_bilirubin_mg_dl",
+    "ggt_u_l",
+    "inr",
+    "hba1c_pct",
+    "triglycerides_mg_dl",
+    "fib4",
+    "apri",
+    "risk_tier_rule",
+    "probability_rule",
+    "latent_fibrosis_score",
+    "latent_stage",
+    "split",
+    "cohort_source",
+    "seed",
+    "schema_version"
+  ]
+}

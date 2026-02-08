@@ -4,5 +4,21 @@ aws_region         = "us-east-1"
 vpc_id             = "vpc-xxxxxxxx"
 private_subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
 db_password        = "replace-with-strong-secret"
+
+# Cognito Hosted UI + application auth routing
+oauth_callback_urls = ["https://api.example.com/api/v1/auth/callback"]
+oauth_logout_urls   = ["https://app.example.com"]
+frontend_redirect_uri = "https://app.example.com"
+cors_allowed_origins  = ["https://app.example.com"]
+
+# Optional: set explicit key, otherwise Terraform generates one.
+session_encryption_key = ""
+
+# App hosting (App Runner) - set true when image URIs are ready.
+enable_app_hosting   = false
+backend_image_uri    = ""
+frontend_image_uri   = ""
+backend_public_base_url = "https://api.example.com"
+
 enable_sagemaker   = false
 sagemaker_image_uri = ""

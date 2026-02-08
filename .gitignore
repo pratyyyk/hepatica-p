@@ -25,6 +25,7 @@ backend/test_hepatica.db
 ml/artifacts/*.pt
 ml/artifacts/*.json
 ml/artifacts/*.tar.gz
+ml/artifacts/stage1/
 
 # Terraform
 .terraform/
