@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import RequestUser, get_request_user
+from app.api.deps import RequestUser, assert_patient_owned_by_user, get_request_user
 from app.core.config import Settings, get_settings
 from app.core.enums import FibrosisStage
-from app.db.models import ClinicalAssessment, FibrosisPrediction, Patient, Report
+from app.core.rate_limit import limiter, user_or_ip_key
+from app.db.models import ClinicalAssessment, FibrosisPrediction, Report
 from app.db.session import get_db
 from app.schemas.report import ReportCreate, ReportRead
 from app.services.audit import write_audit_log
@@ -14,24 +18,29 @@ from app.services.report import build_download_url, build_report_payload, render
 from app.services.timeline import append_timeline_event
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+settings = get_settings()
 
 
 @router.post("", response_model=ReportRead)
+@limiter.limit(settings.rate_limit_mutating_per_ip, key_func=get_remote_address)
+@limiter.limit(settings.rate_limit_mutating_per_user, key_func=user_or_ip_key)
 def create_report(
+    request: Request,
+    response: Response,
     payload: ReportCreate,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
-    settings: Settings = Depends(get_settings),
+    cfg: Settings = Depends(get_settings),
 ):
-    patient = db.get(Patient, payload.patient_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
 
     clinical = None
     fibrosis = None
 
     if payload.clinical_assessment_id:
         clinical = db.get(ClinicalAssessment, payload.clinical_assessment_id)
+        if not clinical or clinical.patient_id != payload.patient_id:
+            raise HTTPException(status_code=404, detail="Clinical assessment not found")
     if clinical is None:
         clinical = db.scalar(
             select(ClinicalAssessment)
@@ -41,6 +50,8 @@ def create_report(
 
     if payload.fibrosis_prediction_id:
         fibrosis = db.get(FibrosisPrediction, payload.fibrosis_prediction_id)
+        if not fibrosis or fibrosis.patient_id != payload.patient_id:
+            raise HTTPException(status_code=404, detail="Fibrosis prediction not found")
     if fibrosis is None:
         fibrosis = db.scalar(
             select(FibrosisPrediction)
@@ -51,7 +62,7 @@ def create_report(
     stage = fibrosis.top1_stage if fibrosis else None
     stage_enum = FibrosisStage(stage) if stage else None
     query = f"fibrosis stage {stage or 'unknown'} follow-up guidance"
-    retrieved = retrieve_chunks(db=db, query=query, settings=settings, top_k=5)
+    retrieved = retrieve_chunks(db=db, query=query, settings=cfg, top_k=5)
     knowledge_blocks = synthesize_blocks(
         fibrosis_stage=stage_enum,
         retrieved=retrieved,
@@ -105,7 +116,7 @@ def create_report(
     db.flush()
 
     pdf_bytes = render_pdf(report_json)
-    object_key = upload_pdf(report_id=row.id, pdf_bytes=pdf_bytes, settings=settings)
+    object_key = upload_pdf(report_id=row.id, pdf_bytes=pdf_bytes, settings=cfg)
     row.pdf_object_key = object_key
 
     append_timeline_event(
@@ -131,28 +142,33 @@ def create_report(
     return ReportRead(
         report_id=row.id,
         patient_id=row.patient_id,
-        pdf_download_url=build_download_url(object_key=row.pdf_object_key, settings=settings),
+        pdf_download_url=build_download_url(object_key=row.pdf_object_key, settings=cfg),
         report_json=row.report_json,
         created_at=row.created_at,
     )
 
 
 @router.get("/{report_id}", response_model=ReportRead)
+@limiter.limit(settings.rate_limit_read_per_user, key_func=user_or_ip_key)
 def get_report(
+    request: Request,
+    response: Response,
     report_id: str,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
-    settings: Settings = Depends(get_settings),
+    cfg: Settings = Depends(get_settings),
 ):
     row = db.get(Report, report_id)
     if not row:
         raise HTTPException(status_code=404, detail="Report not found")
 
+    assert_patient_owned_by_user(db, row.patient_id, req_user.db_user.id)
+
     return ReportRead(
         report_id=row.id,
         patient_id=row.patient_id,
         pdf_download_url=(
-            build_download_url(object_key=row.pdf_object_key, settings=settings)
+            build_download_url(object_key=row.pdf_object_key, settings=cfg)
             if row.pdf_object_key
             else None
         ),

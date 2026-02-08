@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -5,7 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_hepatica.db"
-os.environ["AUTH_DISABLED"] = "true"
+os.environ["ENVIRONMENT"] = "development"
+os.environ["AUTH_MODE"] = "bff"
+os.environ["ENABLE_DEV_AUTH"] = "true"
+os.environ["SESSION_ENCRYPTION_KEY"] = "test-session-encryption-key"
+os.environ["CORS_ALLOWED_ORIGINS"] = "http://localhost:3000"
 
 from app.db.base import Base
 from app.db.session import engine
@@ -25,11 +31,6 @@ def reset_db():
 def client() -> TestClient:
     with TestClient(app) as test_client:
         yield test_client
-
-
-@pytest.fixture()
-def auth_headers() -> dict[str, str]:
-    return {"x-user-email": "doctor@example.com"}
 
 
 @pytest.fixture(scope="session", autouse=True)

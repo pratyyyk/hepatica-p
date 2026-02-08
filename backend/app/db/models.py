@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -27,6 +28,29 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(32), default="DOCTOR", nullable=False)
+
+    auth_sessions = relationship("AuthSession", back_populates="user")
+
+
+class AuthSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "auth_sessions"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
+    refresh_token_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    id_token_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    session_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    ip_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    user_agent_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+    user = relationship("User", back_populates="auth_sessions")
+
+    __table_args__ = (
+        Index("ix_auth_sessions_user_id", "user_id"),
+        Index("ix_auth_sessions_session_expires_at", "session_expires_at"),
+        Index("ix_auth_sessions_revoked_at", "revoked_at"),
+    )
 
 
 class Patient(Base, UUIDPrimaryKeyMixin, TimestampMixin):

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,10 +23,34 @@ class Settings(BaseSettings):
     s3_upload_bucket: str = "hepatica-scans"
     s3_report_bucket: str = "hepatica-reports"
 
+    auth_mode: Literal["bff", "dev_header"] = "bff"
+    enable_dev_auth: bool = False
+
+    # Backward compatibility (legacy). No longer used for primary auth decisions.
+    auth_disabled: bool = False
+
     cognito_user_pool_id: str | None = None
     cognito_client_id: str | None = None
     cognito_region: str = "us-east-1"
-    auth_disabled: bool = True
+    cognito_domain: str = ""
+
+    oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/callback"
+    oauth_logout_redirect_uri: str = "http://localhost:3000"
+    frontend_redirect_uri: str = "http://localhost:3000"
+
+    session_ttl_minutes: int = 480
+    session_cookie_name: str = "hp_session"
+    csrf_cookie_name: str = "hp_csrf"
+    csrf_header_name: str = "x-csrf-token"
+    login_context_cookie_name: str = "hp_login_ctx"
+    session_encryption_key: str = "replace-with-strong-session-key"
+
+    cors_allowed_origins: str = "http://localhost:3000"
+
+    rate_limit_auth_per_minute: str = "20/minute"
+    rate_limit_mutating_per_user: str = "60/minute"
+    rate_limit_mutating_per_ip: str = "120/minute"
+    rate_limit_read_per_user: str = "180/minute"
 
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     journals_path: Path = Path("/Users/praty/journals")
@@ -36,6 +62,26 @@ class Settings(BaseSettings):
 
     max_upload_bytes: int = Field(default=25 * 1024 * 1024)
     presigned_expiration_seconds: int = Field(default=900)
+
+    @property
+    def is_local_dev(self) -> bool:
+        return self.environment.lower() == "development"
+
+    @property
+    def cookie_secure(self) -> bool:
+        return not self.is_local_dev
+
+    @property
+    def cors_allowed_origins_list(self) -> list[str]:
+        raw = self.cors_allowed_origins.strip()
+        if not raw:
+            return []
+        if raw.startswith("["):
+            parsed = json.loads(raw)
+            if not isinstance(parsed, list):
+                raise ValueError("CORS_ALLOWED_ORIGINS JSON must be an array")
+            return [str(x) for x in parsed]
+        return [part.strip() for part in raw.split(",") if part.strip()]
 
 
 @lru_cache

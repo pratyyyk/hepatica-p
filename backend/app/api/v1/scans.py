@@ -1,27 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from app.api.deps import RequestUser, get_request_user
+from app.api.deps import RequestUser, assert_patient_owned_by_user, get_request_user
 from app.core.config import Settings, get_settings
-from app.db.models import Patient, ScanAsset
+from app.core.rate_limit import limiter, user_or_ip_key
+from app.db.models import ScanAsset
 from app.db.session import get_db
 from app.schemas.assessment import UploadUrlRequest, UploadUrlResponse
 from app.services.audit import write_audit_log
 from app.services.upload import generate_presigned_upload
 
 router = APIRouter(prefix="/scans", tags=["scans"])
+settings = get_settings()
 
 
 @router.post("/upload-url", response_model=UploadUrlResponse)
+@limiter.limit(settings.rate_limit_mutating_per_ip, key_func=get_remote_address)
+@limiter.limit(settings.rate_limit_mutating_per_user, key_func=user_or_ip_key)
 def create_upload_url(
+    request: Request,
+    response: Response,
     payload: UploadUrlRequest,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
-    settings: Settings = Depends(get_settings),
+    cfg: Settings = Depends(get_settings),
 ):
-    patient = db.get(Patient, payload.patient_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
 
     try:
         ticket = generate_presigned_upload(
@@ -29,7 +36,7 @@ def create_upload_url(
             filename=payload.filename,
             content_type=payload.content_type,
             byte_size=payload.byte_size,
-            settings=settings,
+            settings=cfg,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

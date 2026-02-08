@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from app.api.deps import RequestUser, get_request_user
+from app.api.deps import RequestUser, assert_patient_owned_by_user, get_request_user
 from app.core.config import Settings, get_settings
 from app.core.enums import FibrosisStage
-from app.db.models import ClinicalAssessment, FibrosisPrediction, Patient, ScanAsset
+from app.core.rate_limit import limiter, user_or_ip_key
+from app.db.models import ClinicalAssessment, FibrosisPrediction, ScanAsset
 from app.db.session import get_db
 from app.schemas.assessment import (
     ClinicalAssessmentCreate,
@@ -24,17 +28,20 @@ from app.services.stage1 import run_stage1
 from app.services.timeline import append_timeline_event
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
+settings = get_settings()
 
 
 @router.post("/clinical", response_model=ClinicalAssessmentRead)
+@limiter.limit(settings.rate_limit_mutating_per_ip, key_func=get_remote_address)
+@limiter.limit(settings.rate_limit_mutating_per_user, key_func=user_or_ip_key)
 def run_clinical_assessment(
+    request: Request,
+    response: Response,
     payload: ClinicalAssessmentCreate,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
 ):
-    patient = db.get(Patient, payload.patient_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
 
     result = run_stage1(
         age=payload.age,
@@ -100,22 +107,24 @@ def run_clinical_assessment(
 
 
 @router.post("/fibrosis", response_model=FibrosisAssessmentRead)
+@limiter.limit(settings.rate_limit_mutating_per_ip, key_func=get_remote_address)
+@limiter.limit(settings.rate_limit_mutating_per_user, key_func=user_or_ip_key)
 def run_fibrosis_assessment(
+    request: Request,
+    response: Response,
     payload: FibrosisAssessmentCreate,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
-    settings: Settings = Depends(get_settings),
+    cfg: Settings = Depends(get_settings),
 ):
-    patient = db.get(Patient, payload.patient_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
 
     scan_asset = db.get(ScanAsset, payload.scan_asset_id)
     if not scan_asset or scan_asset.patient_id != payload.patient_id:
         raise HTTPException(status_code=404, detail="Scan asset not found")
 
     try:
-        image_bytes = fetch_scan_bytes(object_key=scan_asset.object_key, settings=settings)
+        image_bytes = fetch_scan_bytes(object_key=scan_asset.object_key, settings=cfg)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -147,7 +156,7 @@ def run_fibrosis_assessment(
             detail={"reason": "Image quality check failed", "codes": quality.reason_codes},
         )
 
-    runtime = FibrosisModelRuntime(settings=settings)
+    runtime = FibrosisModelRuntime(settings=cfg)
     pred = runtime.predict(image_bytes)
 
     top2_payload = [

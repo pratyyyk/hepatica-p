@@ -1,35 +1,26 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type ApiObj = Record<string, unknown>;
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-
-async function callApi<T>(
-  path: string,
-  method: "GET" | "POST",
-  email: string,
-  payload?: ApiObj,
-): Promise<T> {
-  const res = await fetch(`${apiBase}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "x-user-email": email,
-    },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-  return (await res.json()) as T;
+interface AuthSession {
+  authenticated: boolean;
+  user_id: string;
+  email: string;
+  role: string;
+  csrf_token: string | null;
+  csrf_header_name: string;
 }
 
+const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const showDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === "true";
+
 export default function HomePage() {
-  const [email, setEmail] = useState("doctor@example.com");
-  const [authReady, setAuthReady] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+
+  const [devEmail, setDevEmail] = useState("doctor@example.com");
   const [activePatientId, setActivePatientId] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [scanAssetId, setScanAssetId] = useState("");
@@ -68,6 +59,65 @@ export default function HomePage() {
     return (top?.stage as string | undefined) || undefined;
   }, [fibrosisResp]);
 
+  const authReady = !!session?.authenticated;
+
+  async function bootstrapSession() {
+    setSessionLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/v1/auth/session`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setSession(null);
+        return;
+      }
+      const payload = (await res.json()) as AuthSession;
+      setSession(payload);
+      setStatus(`Authenticated as ${payload.email}`);
+    } catch {
+      setSession(null);
+    } finally {
+      setSessionLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void bootstrapSession();
+  }, []);
+
+  async function apiCall<T>(
+    path: string,
+    method: "GET" | "POST",
+    payload?: ApiObj,
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (method !== "GET" && session?.csrf_token) {
+      headers[session.csrf_header_name] = session.csrf_token;
+    }
+
+    const res = await fetch(`${apiBase}${path}`, {
+      method,
+      credentials: "include",
+      headers,
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+
+    if (res.status === 401) {
+      setSession(null);
+      throw new Error("Authentication required. Please sign in again.");
+    }
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    return (await res.json()) as T;
+  }
+
   async function guarded<T>(fn: () => Promise<T>) {
     setError("");
     try {
@@ -78,17 +128,39 @@ export default function HomePage() {
     }
   }
 
+  function startCognitoLogin() {
+    window.location.href = `${apiBase}/api/v1/auth/login`;
+  }
+
   async function handleDevLogin(e: FormEvent) {
     e.preventDefault();
-    setStatus("Authenticating...");
+    if (!showDevLogin) return;
+
+    setStatus("Authenticating via local dev login...");
     await guarded(async () => {
-      await fetch(`${apiBase}/api/v1/auth/dev-login`, {
+      const res = await fetch(`${apiBase}/api/v1/auth/dev-login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: devEmail }),
       });
-      setAuthReady(true);
-      setStatus("Authenticated as DOCTOR (dev mode)");
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      await bootstrapSession();
+    });
+  }
+
+  async function handleLogout() {
+    setStatus("Logging out...");
+    await guarded(async () => {
+      await apiCall<{ ok: boolean; message: string }>("/api/v1/auth/logout", "POST", {});
+      setSession(null);
+      setActivePatientId("");
+      setScanAssetId("");
+      setStatus("Logged out");
     });
   }
 
@@ -97,7 +169,7 @@ export default function HomePage() {
     if (!authReady) return;
     setStatus("Creating patient...");
     const patient = await guarded(() =>
-      callApi<ApiObj>("/api/v1/patients", "POST", email, patientForm),
+      apiCall<ApiObj>("/api/v1/patients", "POST", patientForm),
     );
     setPatientResp(patient);
     setActivePatientId(String(patient.id));
@@ -105,10 +177,10 @@ export default function HomePage() {
   }
 
   async function loadPatientById() {
-    if (!activePatientId) return;
+    if (!activePatientId || !authReady) return;
     setStatus("Loading patient...");
     const patient = await guarded(() =>
-      callApi<ApiObj>(`/api/v1/patients/${activePatientId}`, "GET", email),
+      apiCall<ApiObj>(`/api/v1/patients/${activePatientId}`, "GET"),
     );
     setPatientResp(patient);
     setStatus("Patient loaded");
@@ -116,22 +188,22 @@ export default function HomePage() {
 
   async function runClinical(e: FormEvent) {
     e.preventDefault();
-    if (!activePatientId) return;
+    if (!activePatientId || !authReady) return;
     setStatus("Running Stage 1 clinical assessment...");
     const payload = { ...clinicalForm, patient_id: activePatientId };
     const out = await guarded(() =>
-      callApi<ApiObj>("/api/v1/assessments/clinical", "POST", email, payload),
+      apiCall<ApiObj>("/api/v1/assessments/clinical", "POST", payload),
     );
     setClinicalResp(out);
     setStatus("Stage 1 completed");
   }
 
   async function createUploadAndUploadFile() {
-    if (!activePatientId || !uploadFile) return;
+    if (!activePatientId || !uploadFile || !authReady) return;
     setStatus("Requesting upload URL...");
 
     const ticket = await guarded(() =>
-      callApi<ApiObj>("/api/v1/scans/upload-url", "POST", email, {
+      apiCall<ApiObj>("/api/v1/scans/upload-url", "POST", {
         patient_id: activePatientId,
         filename: uploadFile.name,
         content_type: uploadFile.type || "image/jpeg",
@@ -158,10 +230,10 @@ export default function HomePage() {
   }
 
   async function runFibrosis() {
-    if (!activePatientId || !scanAssetId) return;
+    if (!activePatientId || !scanAssetId || !authReady) return;
     setStatus("Running Stage 2 fibrosis inference...");
     const out = await guarded(() =>
-      callApi<ApiObj>("/api/v1/assessments/fibrosis", "POST", email, {
+      apiCall<ApiObj>("/api/v1/assessments/fibrosis", "POST", {
         patient_id: activePatientId,
         scan_asset_id: scanAssetId,
       }),
@@ -171,10 +243,10 @@ export default function HomePage() {
   }
 
   async function generateKnowledge() {
-    if (!activePatientId) return;
+    if (!activePatientId || !authReady) return;
     setStatus("Generating knowledge blocks...");
     const out = await guarded(() =>
-      callApi<ApiObj>("/api/v1/knowledge/explain", "POST", email, {
+      apiCall<ApiObj>("/api/v1/knowledge/explain", "POST", {
         patient_id: activePatientId,
         fibrosis_stage: topStage,
         top_k: 5,
@@ -185,10 +257,10 @@ export default function HomePage() {
   }
 
   async function generateReport() {
-    if (!activePatientId) return;
+    if (!activePatientId || !authReady) return;
     setStatus("Generating report PDF...");
     const out = await guarded(() =>
-      callApi<ApiObj>("/api/v1/reports", "POST", email, {
+      apiCall<ApiObj>("/api/v1/reports", "POST", {
         patient_id: activePatientId,
       }),
     );
@@ -197,10 +269,10 @@ export default function HomePage() {
   }
 
   async function loadTimeline() {
-    if (!activePatientId) return;
+    if (!activePatientId || !authReady) return;
     setStatus("Loading timeline...");
     const out = await guarded(() =>
-      callApi<ApiObj>(`/api/v1/patients/${activePatientId}/timeline`, "GET", email),
+      apiCall<ApiObj>(`/api/v1/patients/${activePatientId}/timeline`, "GET"),
     );
     setTimelineResp(out);
     setStatus("Timeline loaded");
@@ -214,19 +286,49 @@ export default function HomePage() {
       <div className="row" style={{ marginTop: 12 }}>
         <span className="pill">Role: DOCTOR</span>
         <span className="pill">API: {apiBase}</span>
+        {session?.email && <span className="pill">User: {session.email}</span>}
         {activePatientId && <span className="pill">Patient: {activePatientId}</span>}
       </div>
 
       <div className="grid">
         <section className="card">
           <h2>Authentication</h2>
-          <form onSubmit={handleDevLogin}>
-            <div className="field">
-              <label>Email</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <button type="submit">Dev Login</button>
-          </form>
+          {sessionLoading ? (
+            <p>Checking session...</p>
+          ) : authReady ? (
+            <>
+              <p>Authenticated session is active.</p>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button type="button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>Sign in using Cognito Hosted UI.</p>
+              <div className="row" style={{ marginTop: 10 }}>
+                <button type="button" onClick={startCognitoLogin}>
+                  Sign in with Cognito
+                </button>
+              </div>
+              {showDevLogin && (
+                <form onSubmit={handleDevLogin} style={{ marginTop: 12 }}>
+                  <div className="field">
+                    <label>Local Dev Email</label>
+                    <input
+                      value={devEmail}
+                      onChange={(e) => setDevEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="secondary">
+                    Dev Login (Local Only)
+                  </button>
+                </form>
+              )}
+            </>
+          )}
         </section>
 
         <section className="card">
@@ -346,7 +448,7 @@ export default function HomePage() {
                 />
               </div>
             </div>
-            <button type="submit" disabled={!activePatientId}>
+            <button type="submit" disabled={!activePatientId || !authReady}>
               Run Stage 1
             </button>
           </form>
@@ -359,7 +461,7 @@ export default function HomePage() {
             <label>Scan File (JPG/PNG)</label>
             <input
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,application/dicom"
               onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
             />
           </div>
@@ -367,7 +469,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => guarded(createUploadAndUploadFile)}
-              disabled={!activePatientId || !uploadFile}
+              disabled={!activePatientId || !uploadFile || !authReady}
             >
               Upload Scan
             </button>
@@ -375,7 +477,7 @@ export default function HomePage() {
               type="button"
               className="warn"
               onClick={() => guarded(runFibrosis)}
-              disabled={!scanAssetId}
+              disabled={!scanAssetId || !authReady}
             >
               Run Stage 2
             </button>
@@ -387,10 +489,19 @@ export default function HomePage() {
         <section className="card">
           <h2>Knowledge + Report</h2>
           <div className="row">
-            <button type="button" onClick={() => guarded(generateKnowledge)} disabled={!activePatientId}>
+            <button
+              type="button"
+              onClick={() => guarded(generateKnowledge)}
+              disabled={!activePatientId || !authReady}
+            >
               Generate Knowledge
             </button>
-            <button type="button" className="secondary" onClick={() => guarded(generateReport)} disabled={!activePatientId}>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => guarded(generateReport)}
+              disabled={!activePatientId || !authReady}
+            >
               Generate Report PDF
             </button>
           </div>
@@ -410,7 +521,7 @@ export default function HomePage() {
 
         <section className="card">
           <h2>Timeline</h2>
-          <button type="button" onClick={() => guarded(loadTimeline)} disabled={!activePatientId}>
+          <button type="button" onClick={() => guarded(loadTimeline)} disabled={!activePatientId || !authReady}>
             Refresh Timeline
           </button>
           {timelineResp && <pre>{JSON.stringify(timelineResp, null, 2)}</pre>}

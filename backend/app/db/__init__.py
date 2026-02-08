@@ -1,4 +1,5 @@
 from app.db.models import (
+    AuthSession,
     AuditLog,
     ClinicalAssessment,
     FibrosisPrediction,
@@ -13,6 +14,7 @@ from app.db.models import (
 
 __all__ = [
     "User",
+    "AuthSession",
     "Patient",
     "ClinicalAssessment",
     "ScanAsset",

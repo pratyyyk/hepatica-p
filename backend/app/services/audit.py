@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.db.models import AuditLog
+from app.db.session import SessionLocal
 
 
 def write_audit_log(
@@ -24,3 +25,20 @@ def write_audit_log(
     db.add(log)
     db.flush()
     return log
+
+
+def record_auth_failure(*, reason: str, metadata: dict | None = None) -> None:
+    try:
+        with SessionLocal() as db:
+            write_audit_log(
+                db,
+                user_id=None,
+                action="AUTH_FAILURE",
+                resource_type="auth",
+                resource_id=None,
+                metadata={"reason": reason, **(metadata or {})},
+            )
+            db.commit()
+    except Exception:
+        # Authentication guards must never fail due to audit write issues.
+        pass

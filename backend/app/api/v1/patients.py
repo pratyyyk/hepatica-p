@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Request, Response, status
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import RequestUser, get_request_user
+from app.api.deps import RequestUser, assert_patient_owned_by_user, get_request_user
+from app.core.config import get_settings
+from app.core.rate_limit import limiter, user_or_ip_key
 from app.db.models import Patient
 from app.db.session import get_db
 from app.schemas.patient import PatientCreate, PatientRead
@@ -10,16 +15,23 @@ from app.services.audit import write_audit_log
 from app.services.timeline import append_timeline_event
 
 router = APIRouter(prefix="/patients", tags=["patients"])
+settings = get_settings()
 
 
 @router.post("", response_model=PatientRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.rate_limit_mutating_per_ip, key_func=get_remote_address)
+@limiter.limit(settings.rate_limit_mutating_per_user, key_func=user_or_ip_key)
 def create_patient(
+    request: Request,
+    response: Response,
     payload: PatientCreate,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
 ):
     existing = db.scalar(select(Patient).where(Patient.external_id == payload.external_id))
     if existing:
+        from fastapi import HTTPException
+
         raise HTTPException(status_code=409, detail="Patient external_id already exists")
 
     patient = Patient(
@@ -56,14 +68,15 @@ def create_patient(
 
 
 @router.get("/{patient_id}", response_model=PatientRead)
+@limiter.limit(settings.rate_limit_read_per_user, key_func=user_or_ip_key)
 def get_patient(
+    request: Request,
+    response: Response,
     patient_id: str,
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
 ):
-    patient = db.get(Patient, patient_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    patient = assert_patient_owned_by_user(db, patient_id, req_user.db_user.id)
 
     write_audit_log(
         db,
