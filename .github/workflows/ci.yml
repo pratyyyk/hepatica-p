@@ -48,10 +48,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
       - name: Terraform format check
         run: terraform fmt -check -recursive
       - name: Terraform init
-        run: terraform init -backend=false
+        run: terraform init -backend=false -input=false
       - name: Terraform validate
         run: terraform validate
 

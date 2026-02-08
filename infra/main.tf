@@ -196,31 +196,31 @@ resource "aws_cloudwatch_dashboard" "ops" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        type = "metric"
-        x    = 0
-        y    = 0
-        width = 12
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
         height = 6
         properties = {
-          title = "RDS CPU"
-          region = var.aws_region
+          title   = "RDS CPU"
+          region  = var.aws_region
           metrics = [["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", aws_db_instance.postgres.id]]
-          stat = "Average"
-          period = 300
+          stat    = "Average"
+          period  = 300
         }
       },
       {
-        type = "metric"
-        x    = 12
-        y    = 0
-        width = 12
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
         height = 6
         properties = {
-          title = "API Log Events"
-          region = var.aws_region
+          title   = "API Log Events"
+          region  = var.aws_region
           metrics = [["AWS/Logs", "IncomingLogEvents", "LogGroupName", aws_cloudwatch_log_group.api.name]]
-          stat = "Sum"
-          period = 300
+          stat    = "Sum"
+          period  = 300
         }
       }
     ]
