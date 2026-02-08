@@ -1,0 +1,8 @@
+project_name       = "hepatica"
+environment        = "staging"
+aws_region         = "us-east-1"
+vpc_id             = "vpc-xxxxxxxx"
+private_subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
+db_password        = "replace-with-strong-secret"
+enable_sagemaker   = false
+sagemaker_image_uri = ""

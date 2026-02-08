@@ -1,0 +1,153 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap");
+
+:root {
+  --bg: #f3f6f8;
+  --card: #ffffff;
+  --ink: #0a2333;
+  --muted: #4f6472;
+  --line: #d7e0e6;
+  --accent: #0f766e;
+  --warn: #b45309;
+  --danger: #be123c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  background:
+    radial-gradient(circle at 15% 20%, #d4f5ea 0, transparent 34%),
+    radial-gradient(circle at 90% 10%, #ddeeff 0, transparent 25%),
+    var(--bg);
+  color: var(--ink);
+}
+
+main {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: clamp(1.7rem, 2vw + 1rem, 2.5rem);
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 4px 20px rgba(10, 35, 51, 0.06);
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+label {
+  font-size: 0.87rem;
+  color: var(--muted);
+}
+
+input,
+select,
+button,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  background: #fff;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #0a2333;
+}
+
+button.warn {
+  background: var(--warn);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+  background: #f9fbfc;
+}
+
+.result {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  background: #fcfeff;
+}
+
+pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  background: #0b1620;
+  color: #dbeafe;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 0.82rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+small.error {
+  color: var(--danger);
+}

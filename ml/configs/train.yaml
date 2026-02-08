@@ -1,0 +1,15 @@
+data_root: /Users/praty/hepatica-p/data/Images
+artifact_dir: /Users/praty/hepatica-p/ml/artifacts
+seed: 42
+num_workers: 4
+batch_size: 24
+image_size: 384
+learning_rate: 0.0003
+weight_decay: 0.01
+epochs: 40
+early_stopping_patience: 8
+train_ratio: 0.70
+val_ratio: 0.15
+test_ratio: 0.15
+low_confidence_threshold: 0.60
+severe_threshold: 0.65

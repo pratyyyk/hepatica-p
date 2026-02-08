@@ -1,0 +1,7 @@
+torch==2.5.1
+torchvision==0.20.1
+numpy==2.2.6
+scikit-learn==1.6.1
+pillow==11.3.0
+tqdm==4.67.1
+pyyaml==6.0.2

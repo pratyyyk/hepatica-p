@@ -1,0 +1,38 @@
+# Runbook
+
+## Local startup
+
+```bash
+cd /Users/praty/hepatica-p/backend
+cp .env.example .env
+python3 -m pip install -r requirements.txt
+python3 -m app.db.init_db
+uvicorn app.main:app --reload --port 8000
+```
+
+```bash
+cd /Users/praty/hepatica-p/frontend
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+
+## Journal ingestion
+
+```bash
+cd /Users/praty/hepatica-p/backend
+python3 scripts/ingest_journals.py
+```
+
+## Model training
+
+```bash
+cd /Users/praty/hepatica-p/ml
+python3 -m pip install -r requirements.txt
+python3 scripts/train.py
+python3 scripts/evaluate.py
+```
+
+## Drift monitoring (weekly)
+
+Run `/Users/praty/hepatica-p/ml/scripts/drift_monitor.py` as a weekly scheduled job.

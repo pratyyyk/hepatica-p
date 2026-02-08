@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+.pytest_cache/
+.coverage
+
+# Environments
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Node
+node_modules/
+.next/
+
+# Build and artifacts
+backend/hepatica.db
+backend/test_hepatica.db
+ml/artifacts/*.pt
+ml/artifacts/*.json
+ml/artifacts/*.tar.gz
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
