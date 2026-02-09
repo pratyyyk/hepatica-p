@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import requests
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from jose import JWTError, jwt
 from slowapi.util import get_remote_address
@@ -285,7 +285,7 @@ def logout(
 def dev_login(
     request: Request,
     response: Response,
-    payload: DevLoginRequest,
+    payload: DevLoginRequest = Body(...),
     db: Session = Depends(get_db),
     cfg: Settings = Depends(get_settings),
 ):
