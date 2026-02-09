@@ -28,6 +28,17 @@ cd /Users/praty/hepatica-p/backend
 make smoke
 ```
 
+## Smoke evidence artifacts
+
+```bash
+cd /Users/praty/hepatica-p/backend
+make smoke-evidence
+```
+
+Outputs:
+- `artifacts/uat/uat_evidence.json`
+- `artifacts/uat/uat_evidence.md`
+
 ## Migrations
 
 ```bash

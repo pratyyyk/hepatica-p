@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///./smoke_hepatica.db")
+SMOKE_DB_PATH = ROOT / f"smoke_hepatica_{os.getpid()}_{uuid.uuid4().hex}.db"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{SMOKE_DB_PATH}")
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("AUTH_MODE", "bff")
 os.environ.setdefault("ENABLE_DEV_AUTH", "true")
@@ -128,5 +129,12 @@ def run_smoke() -> None:
 
 
 if __name__ == "__main__":
-    run_smoke()
-    print("Smoke flow passed.")
+    try:
+        run_smoke()
+        print("Smoke flow passed.")
+    finally:
+        try:
+            if SMOKE_DB_PATH.exists():
+                SMOKE_DB_PATH.unlink()
+        except Exception:
+            pass

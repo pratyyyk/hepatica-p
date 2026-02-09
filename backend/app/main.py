@@ -10,6 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api.v1.api import api_router
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
+from app.core.startup_guardrails import StartupGuardrailError, validate_startup_security_guardrails
 from app.db.init_db import init_db
 from app.services.audit import record_auth_failure
 from app.services.fibrosis_inference import Stage2ArtifactContractError, validate_stage2_artifacts
@@ -19,6 +20,11 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    try:
+        validate_startup_security_guardrails(settings)
+    except StartupGuardrailError as exc:
+        raise RuntimeError(f"Startup security guard failed: {exc}") from exc
+
     if not settings.is_local_dev and settings.stage2_require_model_non_dev:
         try:
             validate_stage2_artifacts(settings)

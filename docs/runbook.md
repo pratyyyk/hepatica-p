@@ -57,3 +57,13 @@ make staging-apply
 ```
 
 `staging-apply` runs terraform apply and then checks backend `/healthz` and frontend root URL from terraform outputs.
+
+## Release dry-run pack
+
+```bash
+cd /Users/praty/hepatica-p
+make release-pack
+```
+
+Bundle output path:
+- `artifacts/release/<timestamp>/`

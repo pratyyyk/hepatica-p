@@ -70,6 +70,20 @@ Requirements:
 - `/Users/praty/hepatica-p/infra/terraform.tfvars` populated
 - Terraform `1.10.5` available in PATH (enforced by `infra/scripts/validate.sh`)
 
+## Release Dry-Run Pack
+
+```bash
+cd /Users/praty/hepatica-p
+make release-pack
+```
+
+This generates a timestamped release bundle under `artifacts/release/` with:
+- exact run commands
+- expected outputs
+- go/no-go checklist
+- rollback playbook
+- UAT evidence artifacts
+
 ## API Contract
 
 OpenAPI spec: `/Users/praty/hepatica-p/docs/openapi.yaml`

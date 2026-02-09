@@ -1,4 +1,4 @@
-.PHONY: install run test lint init-db ingest-journals smoke
+.PHONY: install run test lint init-db ingest-journals smoke smoke-evidence
 
 install:
 	python3 -m pip install -r requirements.txt
@@ -20,3 +20,6 @@ lint:
 
 smoke:
 	python3 scripts/smoke_flow.py
+
+smoke-evidence:
+	python3 scripts/smoke_evidence.py
