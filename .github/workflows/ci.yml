@@ -37,6 +37,8 @@ jobs:
           pip install -r requirements.txt
       - name: Run unit and API tests
         run: python -m pytest -vv -ra --maxfail=1
+      - name: Run backend smoke flow
+        run: make smoke
 
   frontend-build:
     runs-on: ubuntu-latest
