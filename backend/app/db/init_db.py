@@ -8,6 +8,12 @@ from app.db.session import engine
 
 DEFAULT_MODELS = [
     {
+        "name": "clinical-stage1-gbdt",
+        "version": "v1",
+        "artifact_uri": "file:///app/ml/artifacts/stage1",
+        "metrics": {"type": "ml", "task": "risk_tier_and_probability"},
+    },
+    {
         "name": "clinical-rule-engine",
         "version": "v1",
         "artifact_uri": "builtin://clinical-rule-engine/v1",
@@ -16,8 +22,8 @@ DEFAULT_MODELS = [
     {
         "name": "fibrosis-efficientnet-b3",
         "version": "v1",
-        "artifact_uri": "s3://hepatica-models/fibrosis/v1/model.pt",
-        "metrics": {},
+        "artifact_uri": "file:///app/ml/artifacts/fibrosis_model.pt",
+        "metrics": {"type": "ml", "task": "fibrosis_stage"},
     },
 ]
 
@@ -33,6 +39,9 @@ def init_db() -> None:
                     )
                 )
                 if existing:
+                    existing.artifact_uri = record["artifact_uri"]
+                    existing.metrics = record["metrics"]
+                    existing.is_active = True
                     continue
                 db.add(ModelRegistry(**record))
             db.commit()

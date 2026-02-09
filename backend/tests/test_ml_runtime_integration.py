@@ -22,6 +22,16 @@ def _sample_image_bytes() -> bytes:
 def test_stage1_ml_prediction_smoke():
     repo_root = Path(__file__).resolve().parents[2]
     artifact_dir = repo_root / "ml" / "artifacts" / "stage1"
+    required = [
+        artifact_dir / "stage1_preprocessor.joblib",
+        artifact_dir / "stage1_classifier.joblib",
+        artifact_dir / "stage1_reg_probability.joblib",
+    ]
+    if any(not path.exists() for path in required):
+        pytest.skip(
+            f"Stage 1 artifacts not present in checkout: {artifact_dir}. "
+            "Run ml-stage1 workflow to produce them."
+        )
 
     prediction = predict_stage1_ml(
         patient_sex="F",
