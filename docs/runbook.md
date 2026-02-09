@@ -6,7 +6,7 @@
 cd /Users/praty/hepatica-p/backend
 cp .env.example .env
 python3 -m pip install -r requirements.txt
-python3 -m app.db.init_db
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 

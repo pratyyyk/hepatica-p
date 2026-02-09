@@ -44,8 +44,21 @@ jobs:
           cache-dependency-path: frontend/package.json
       - name: Install dependencies
         run: npm install
+      - name: Audit production dependencies (high/critical)
+        run: npm audit --omit=dev --audit-level=high
       - name: Build
         run: npm run build
+
+  docs-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce migration-first startup docs
+        run: |
+          if grep -RIn "python3 -m app.db.init_db" README.md docs/runbook.md; then
+            echo "Legacy init_db startup command found in top-level docs."
+            exit 1
+          fi
 
   infra-validate:
     runs-on: ubuntu-latest
