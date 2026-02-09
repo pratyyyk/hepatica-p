@@ -34,3 +34,17 @@ alembic upgrade head
 cd /Users/praty/hepatica-p/backend
 python3.11 -m app.db.init_db
 ```
+
+## Model promotion CLI
+
+```bash
+cd /Users/praty/hepatica-p/backend
+python3.11 scripts/model_registry.py list --name clinical-stage1-gbdt --json
+python3.11 scripts/model_registry.py activate --name clinical-stage1-gbdt --version v20260208.1751.seed42
+python3.11 scripts/model_registry.py deactivate --name clinical-stage1-gbdt --version v1 --allow-zero-active
+```
+
+Notes:
+- `activate` is exclusive by default and deactivates other active versions for the same model name.
+- Use `--keep-others-active` to opt out of exclusive activation.
+- `deactivate` refuses to deactivate the last active version unless `--allow-zero-active` is set.
