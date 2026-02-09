@@ -8,6 +8,7 @@ import requests
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from jose import JWTError, jwt
+from pydantic import ValidationError
 from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -285,16 +286,25 @@ def logout(
 def dev_login(
     request: Request,
     response: Response,
-    payload: DevLoginRequest = Body(...),
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     cfg: Settings = Depends(get_settings),
 ):
     if not dev_auth_route_available(cfg):
         raise HTTPException(status_code=404, detail="Not found")
 
-    user = db.scalar(select(User).where(User.email == payload.email))
+    try:
+        parsed_payload = DevLoginRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    user = db.scalar(select(User).where(User.email == parsed_payload.email))
     if user is None:
-        user = User(email=payload.email, full_name=payload.full_name or payload.email, role="DOCTOR")
+        user = User(
+            email=parsed_payload.email,
+            full_name=parsed_payload.full_name or parsed_payload.email,
+            role="DOCTOR",
+        )
         db.add(user)
         db.flush()
 
