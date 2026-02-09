@@ -4,7 +4,7 @@ Base prefix: `/api/v1`
 
 ## Auth
 
-- `POST /auth/dev-login` (development only; requires `ENABLE_DEV_AUTH=true`)
+- `POST /auth/dev-login` (development only; enabled by default, can be disabled via `ENABLE_DEV_AUTH=false`)
   - Body: `{ "email": "doctor@example.com" }`
   - Sets cookies: `hp_session`, `hp_csrf`
 
@@ -72,4 +72,3 @@ Base prefix: `/api/v1`
 
 - `GET /models/status`
   - Returns registry + artifact health checks for Stage 1 and Stage 2.
-

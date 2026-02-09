@@ -2,6 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
+from app.db.base import Base
 from app.db.models import ModelRegistry
 from app.db.session import engine
 
@@ -28,24 +30,37 @@ DEFAULT_MODELS = [
 ]
 
 
+def _seed_defaults(db: Session) -> None:
+    for record in DEFAULT_MODELS:
+        existing = db.scalar(
+            select(ModelRegistry).where(
+                ModelRegistry.name == record["name"],
+                ModelRegistry.version == record["version"],
+            )
+        )
+        if existing:
+            existing.artifact_uri = record["artifact_uri"]
+            existing.metrics = record["metrics"]
+            existing.is_active = True
+            continue
+        db.add(ModelRegistry(**record))
+
+
 def init_db() -> None:
+    cfg = get_settings()
     try:
         with Session(engine) as db:
-            for record in DEFAULT_MODELS:
-                existing = db.scalar(
-                    select(ModelRegistry).where(
-                        ModelRegistry.name == record["name"],
-                        ModelRegistry.version == record["version"],
-                    )
-                )
-                if existing:
-                    existing.artifact_uri = record["artifact_uri"]
-                    existing.metrics = record["metrics"]
-                    existing.is_active = True
-                    continue
-                db.add(ModelRegistry(**record))
+            _seed_defaults(db)
             db.commit()
     except (OperationalError, ProgrammingError) as exc:
+        # Local demo mode: if the DB hasn't been migrated yet, create tables so the app can boot.
+        # In non-dev, keep the stricter behavior to avoid silently running with an unintended schema.
+        if cfg.is_local_dev and str(cfg.database_url).startswith("sqlite"):
+            Base.metadata.create_all(bind=engine)
+            with Session(engine) as db:
+                _seed_defaults(db)
+                db.commit()
+            return
         raise RuntimeError(
             "Database schema is missing. Run `alembic upgrade head` before starting the API."
         ) from exc

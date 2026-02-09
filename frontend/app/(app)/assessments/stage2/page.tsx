@@ -59,6 +59,36 @@ export default function Stage2Page() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [qualityCodes, setQualityCodes] = useState<string[]>([]);
+  const [qualityMetrics, setQualityMetrics] = useState<Record<string, unknown> | null>(null);
+
+  function clearErrors() {
+    setError("");
+    setQualityCodes([]);
+    setQualityMetrics(null);
+  }
+
+  function maybeCaptureQualityError(err: unknown) {
+    if (!(err instanceof Error)) return;
+    // apiFetch attaches parsed JSON as `cause` when available.
+    const cause = err.cause;
+    if (!cause || typeof cause !== "object") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const detail = (cause as any).detail;
+    if (!detail || typeof detail !== "object") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reason = (detail as any).reason;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const codes = (detail as any).codes;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metrics = (detail as any).metrics;
+    if (reason === "Image quality check failed" && Array.isArray(codes)) {
+      setQualityCodes(codes.map((c) => String(c)));
+      if (metrics && typeof metrics === "object") {
+        setQualityMetrics(metrics as Record<string, unknown>);
+      }
+    }
+  }
 
   useEffect(() => {
     if (activePatientId && !patientId) setPatientId(activePatientId);
@@ -70,7 +100,7 @@ export default function Stage2Page() {
     e.preventDefault();
     if (!patientId || !file) return;
     setBusy(true);
-    setError("");
+    clearErrors();
     setStatus("Requesting upload URL...");
     try {
       const t = await apiFetch<UploadTicket>("/api/v1/scans/upload-url", {
@@ -98,6 +128,7 @@ export default function Stage2Page() {
       setStatus("Upload complete");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
+      maybeCaptureQualityError(err);
       setStatus("");
     } finally {
       setBusy(false);
@@ -107,7 +138,7 @@ export default function Stage2Page() {
   async function runStage2() {
     if (!patientId || !scanAssetId) return;
     setBusy(true);
-    setError("");
+    clearErrors();
     setStatus("Running Stage 2 inference...");
     try {
       const out = await apiFetch<FibrosisResponse>("/api/v1/assessments/fibrosis", {
@@ -120,6 +151,7 @@ export default function Stage2Page() {
       setStatus("Stage 2 complete");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Stage 2 failed");
+      maybeCaptureQualityError(err);
       setStatus("");
     } finally {
       setBusy(false);
@@ -204,7 +236,25 @@ export default function Stage2Page() {
           ) : null}
 
           {status ? <InlineStatus tone="ok">{status}</InlineStatus> : null}
-          {error ? <InlineStatus tone="danger">{error}</InlineStatus> : null}
+          {error ? (
+            <InlineStatus tone="danger">
+              {error}
+              {qualityCodes.length ? (
+                <>
+                  {"\n"}
+                  {qualityCodes.map((c) => `- ${c}`).join("\n")}
+                  {"\n"}
+                  Tip: try a sharper/brighter ultrasound image (repo samples live under `data/Images/`).
+                </>
+              ) : null}
+              {qualityMetrics ? (
+                <>
+                  {"\n"}
+                  Metrics: {JSON.stringify(qualityMetrics)}
+                </>
+              ) : null}
+            </InlineStatus>
+          ) : null}
         </form>
       </Card>
 
@@ -273,4 +323,3 @@ export default function Stage2Page() {
     </div>
   );
 }
-

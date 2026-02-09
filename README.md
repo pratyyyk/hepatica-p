@@ -81,10 +81,11 @@ Reason: keeps “always works” triage available while treating uploads/inferen
 ```bash
 cd backend
 cp .env.example .env
-# ensure ENVIRONMENT=development and ENABLE_DEV_AUTH=true in .env
 python3.11 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
+# Optional (recommended): run migrations explicitly. In local dev + SQLite, the API will also auto-create tables
+# on first boot so the demo can start without extra steps.
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
@@ -145,7 +146,7 @@ Reason: these map directly to the UI workflow and cover the complete demo path.
 Backend: `backend/.env` (see `backend/.env.example`)
 - `ENVIRONMENT=development|production`
 - `AUTH_PROVIDER=firebase|cognito`
-- `ENABLE_DEV_AUTH=true` (enables `POST /api/v1/auth/dev-login` in development)
+- `ENABLE_DEV_AUTH=true|false` (controls `POST /api/v1/auth/dev-login`; defaults to enabled in development)
 - `SESSION_ENCRYPTION_KEY=...` (must be strong for non-dev)
 - `UPLOAD_MODE=auto|local|s3` (auto=local in development, s3 otherwise)
 - `LOCAL_STORAGE_DIR=../backend/artifacts` (where local uploads/PDFs are stored)
@@ -233,8 +234,8 @@ Why these checks:
 
 ## Troubleshooting (Common)
 
-- Dev login UI not showing: set `NEXT_PUBLIC_ENABLE_DEV_AUTH=true` in `frontend/.env.local` and `ENABLE_DEV_AUTH=true`
-  in `backend/.env`.
+- Dev login UI not showing: set `NEXT_PUBLIC_ENABLE_DEV_AUTH=true` in `frontend/.env.local`. If you explicitly disabled
+  it server-side, set `ENABLE_DEV_AUTH=true` in `backend/.env`.
 - Upload fails in local demo: ensure `ENVIRONMENT=development` and `UPLOAD_MODE=auto` (or `local`) in `backend/.env`.
 - PDF “Open” fails: it should use `/api/v1/reports/{id}/pdf`; if not, check `backend/app/api/v1/reports.py`.
 - Stage 2 returns 422 quality errors: try a higher-resolution/less-blurry image (quality gates are strict by design).

@@ -32,7 +32,7 @@ uvicorn app.main:app --reload --port 8000
 Endpoints live in `backend/app/api/v1/auth.py`.
 
 Modes:
-- Dev login (demo): `POST /api/v1/auth/dev-login` when `ENABLE_DEV_AUTH=true` and `ENVIRONMENT=development`
+- Dev login (demo): `POST /api/v1/auth/dev-login` in `ENVIRONMENT=development` (can be disabled via `ENABLE_DEV_AUTH=false`)
 - Firebase login (optional): `POST /api/v1/auth/firebase-login`
 - Cognito hosted UI (optional legacy): `GET /api/v1/auth/login` and callback
 
@@ -65,4 +65,3 @@ make smoke
 
 Test setup notes:
 - `backend/tests/conftest.py` forces development settings and uses a temporary SQLite DB.
-

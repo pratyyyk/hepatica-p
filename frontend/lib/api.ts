@@ -24,6 +24,45 @@ function sameOrigin(urlA: string, urlB: string) {
   }
 }
 
+function formatErrorDetail(detail: unknown): string {
+  if (!detail) return "Request failed";
+  if (typeof detail === "string") return detail;
+
+  // FastAPI default: { "detail": ... }
+  if (typeof detail === "object" && detail && "detail" in detail) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return formatErrorDetail((detail as any).detail);
+  }
+
+  // Validation errors (Pydantic): list of { loc, msg, type, ... }
+  if (Array.isArray(detail)) {
+    const first = detail[0];
+    if (first && typeof first === "object") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const loc = (first as any).loc;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const msg = (first as any).msg;
+      if (Array.isArray(loc) && typeof msg === "string") {
+        return `Validation error: ${loc.join(".")}: ${msg}`;
+      }
+    }
+    return "Validation error";
+  }
+
+  // Domain errors: { reason, codes?, code? }
+  if (typeof detail === "object" && detail) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reason = (detail as any).reason;
+    if (typeof reason === "string") return reason;
+  }
+
+  try {
+    return JSON.stringify(detail);
+  } catch {
+    return "Request failed";
+  }
+}
+
 export async function apiFetch<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   const method = opts.method || "GET";
   const headers: Record<string, string> = {
@@ -39,19 +78,37 @@ export async function apiFetch<T>(path: string, opts: ApiOptions = {}): Promise<
     headers[opts.csrfHeaderName] = opts.csrfToken;
   }
 
-  const res = await fetch(`${apiBase}${path}`, {
-    method,
-    credentials: "include",
-    headers,
-    body: hasBody ? JSON.stringify(opts.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase}${path}`, {
+      method,
+      credentials: "include",
+      headers,
+      body: hasBody ? JSON.stringify(opts.body) : undefined,
+    });
+  } catch (err) {
+    const hint =
+      `Cannot reach API at ${apiBase}. ` +
+      `Is the backend running and CORS allowing this origin? ` +
+      `Try: cd backend && cp .env.example .env && uvicorn app.main:app --reload --port 8000`;
+    throw new Error(hint, { cause: err instanceof Error ? err : undefined });
+  }
 
   if (res.status === 401) {
     throw new Error("Authentication required. Please sign in again.");
   }
 
   if (!res.ok) {
-    const text = await res.text();
+    const text = await res.text().catch(() => "");
+    const contentType = res.headers.get("content-type");
+    if (isJsonResponse(contentType) && text) {
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        throw new Error(formatErrorDetail(parsed), { cause: parsed });
+      } catch {
+        // fall through to raw text
+      }
+    }
     throw new Error(text || `Request failed (${res.status})`);
   }
 
@@ -98,4 +155,3 @@ export async function uploadFileToUrl(params: {
 
   return { ok: true, status: res.status };
 }
-

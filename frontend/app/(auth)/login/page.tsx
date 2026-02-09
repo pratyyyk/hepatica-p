@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { Button, Card, CardHeader, Field, Input, Pill } from "@/components/ui";
+import { apiBase } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 const showDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === "true";
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const { session, loading, loginDev } = useSession();
   const [customEmail, setCustomEmail] = useState("doctor@example.com");
   const [error, setError] = useState("");
+  const [health, setHealth] = useState<"idle" | "checking" | "ok" | "down">("idle");
 
   const authed = !!session?.authenticated;
   const headline = useMemo(() => (authed ? "You are signed in" : "Sign in to the console"), [authed]);
@@ -33,6 +35,22 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : "Login failed");
     }
   }
+
+  async function checkHealth() {
+    setHealth("checking");
+    try {
+      const res = await fetch(`${apiBase}/healthz`, { cache: "no-store" });
+      setHealth(res.ok ? "ok" : "down");
+    } catch {
+      setHealth("down");
+    }
+  }
+
+  useEffect(() => {
+    if (!loading && !authed && health === "idle") {
+      void checkHealth();
+    }
+  }, [authed, health, loading]);
 
   return (
     <main className="authWrap">
@@ -60,10 +78,24 @@ export default function LoginPage() {
             </div>
           ) : (
             <div className="stack">
+              <div className="row">
+                <div className="muted">API: {apiBase}</div>
+                <Button
+                  tone="ghost"
+                  type="button"
+                  onClick={() => void checkHealth()}
+                  disabled={health === "checking"}
+                >
+                  {health === "checking" ? "Checking..." : "Check backend"}
+                </Button>
+                {health === "ok" ? <Pill tone="ok">Backend OK</Pill> : null}
+                {health === "down" ? <Pill tone="warn">Backend unreachable</Pill> : null}
+              </div>
               {!showDevLogin ? (
                 <div className="status status-warn">
-                  Dev login is disabled. Set `NEXT_PUBLIC_ENABLE_DEV_AUTH=true` in `frontend/.env.local`
-                  and `ENABLE_DEV_AUTH=true` in `backend/.env`.
+                  Dev login is disabled in the frontend build. Set `NEXT_PUBLIC_ENABLE_DEV_AUTH=true` in
+                  `frontend/.env.local`. (Backend dev login is enabled by default in `ENVIRONMENT=development`;
+                  set `ENABLE_DEV_AUTH=true` only if you turned it off.)
                 </div>
               ) : (
                 <>
@@ -129,4 +161,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

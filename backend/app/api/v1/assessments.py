@@ -212,9 +212,13 @@ def run_fibrosis_assessment(
     if not quality.is_valid:
         scan_asset.status = "QUALITY_REJECTED"
         db.commit()
+        detail: dict[str, object] = {"reason": "Image quality check failed", "codes": quality.reason_codes}
+        if cfg.is_local_dev:
+            # Safe for local demos/debugging; keep non-dev responses minimal.
+            detail["metrics"] = quality.metrics
         raise HTTPException(
             status_code=422,
-            detail={"reason": "Image quality check failed", "codes": quality.reason_codes},
+            detail=detail,
         )
 
     active_stage2_model = get_active_model(db, cfg.stage2_registry_model_name)

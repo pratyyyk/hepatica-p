@@ -27,7 +27,8 @@ class Settings(BaseSettings):
 
     auth_mode: Literal["bff", "dev_header"] = "bff"
     auth_provider: Literal["firebase", "cognito"] = "firebase"
-    enable_dev_auth: bool = False
+    # Local demo convenience: dev login routes are available by default in development.
+    enable_dev_auth: bool = True
 
     # Backward compatibility (legacy). No longer used for primary auth decisions.
     auth_disabled: bool = False

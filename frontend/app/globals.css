@@ -367,6 +367,7 @@ a {
   padding: 10px 12px;
   border: 1px solid rgba(10, 35, 51, 0.12);
   background: rgba(255, 255, 255, 0.7);
+  white-space: pre-wrap;
 }
 .status-ok {
   border-color: rgba(4, 120, 87, 0.22);
@@ -600,4 +601,3 @@ a {
     grid-template-columns: 1fr;
   }
 }
-

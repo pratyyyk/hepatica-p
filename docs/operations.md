@@ -2,7 +2,7 @@
 
 ## Local Development
 
-Recommended: `ENVIRONMENT=development` and `ENABLE_DEV_AUTH=true`.
+Recommended: `ENVIRONMENT=development` (dev login is enabled by default; set `ENABLE_DEV_AUTH=true` if you disabled it).
 
 Key local-first behavior:
 - `UPLOAD_MODE=auto` resolves to local uploads in development.
@@ -32,4 +32,3 @@ make staging-apply
 Notes:
 - Requires AWS credentials and Terraform available.
 - `infra/` is considered optional/legacy for this repo; the prototype is designed to run without it.
-
