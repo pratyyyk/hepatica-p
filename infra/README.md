@@ -14,13 +14,14 @@
 ```bash
 cd /Users/praty/hepatica-p/infra
 cp terraform.tfvars.example terraform.tfvars
-terraform init
+./scripts/validate.sh
 terraform plan
 terraform apply
 ```
 
 ## Notes
 
+- Local validation is pinned to Terraform `1.10.5` via `scripts/validate.sh`.
 - `enable_sagemaker` defaults to `false` to avoid accidental endpoint cost.
 - Restrict SG ingress CIDRs for production.
 - Add KMS CMKs and stricter IAM policies before production launch.
