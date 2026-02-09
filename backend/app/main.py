@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,10 +15,18 @@ from app.services.audit import record_auth_failure
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     debug=settings.debug,
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -66,12 +76,6 @@ async def csrf_protection_middleware(request: Request, call_next):
             return JSONResponse(status_code=403, content={"detail": "CSRF validation failed"})
 
     return await call_next(request)
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
-
 
 @app.get("/healthz")
 def healthz() -> dict:

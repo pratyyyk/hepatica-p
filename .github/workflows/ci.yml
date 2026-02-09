@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Enforce migration-first startup docs
         run: |
-          if grep -RIn "python3 -m app.db.init_db" README.md docs/runbook.md; then
+          if grep -RIn "app\.db\.init_db" README.md docs/runbook.md; then
             echo "Legacy init_db startup command found in top-level docs."
             exit 1
           fi

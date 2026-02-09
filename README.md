@@ -11,12 +11,14 @@ Clinical workflow MVP for advanced fibrosis/cirrhosis risk triage and fibrosis s
 
 ## Quick Start
 
+Python runtime: `3.11` (repo pin in `/Users/praty/hepatica-p/.python-version`).
+
 ### 1) Backend
 
 ```bash
 cd /Users/praty/hepatica-p/backend
 cp .env.example .env
-python3 -m pip install -r requirements.txt
+python3.11 -m pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
@@ -34,16 +36,16 @@ npm run dev
 
 ```bash
 cd /Users/praty/hepatica-p/backend
-python3 scripts/ingest_journals.py
+python3.11 scripts/ingest_journals.py
 ```
 
 ### 4) Optional: Model Training
 
 ```bash
 cd /Users/praty/hepatica-p/ml
-python3 -m pip install -r requirements.txt
-python3 scripts/train.py
-python3 scripts/evaluate.py
+python3.11 -m pip install -r requirements.txt
+python3.11 scripts/train.py
+python3.11 scripts/evaluate.py
 ```
 
 ## API Contract
