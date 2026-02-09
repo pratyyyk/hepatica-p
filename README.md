@@ -57,6 +57,19 @@ make preflight
 
 This runs backend tests, backend smoke flow, frontend lint/audit/build, infra validation, and backend container build (if Docker daemon is available).
 
+## Staging Deploy Helper
+
+```bash
+cd /Users/praty/hepatica-p
+make staging-plan
+make staging-apply
+```
+
+Requirements:
+- AWS CLI authenticated (`aws sts get-caller-identity`)
+- `/Users/praty/hepatica-p/infra/terraform.tfvars` populated
+- Terraform `1.10.5` available in PATH (enforced by `infra/scripts/validate.sh`)
+
 ## API Contract
 
 OpenAPI spec: `/Users/praty/hepatica-p/docs/openapi.yaml`

@@ -47,3 +47,13 @@ make preflight
 ```
 
 `make preflight` runs backend tests + smoke, frontend lint/audit/build, and infra validation.
+
+## Staging deploy
+
+```bash
+cd /Users/praty/hepatica-p
+make staging-plan
+make staging-apply
+```
+
+`staging-apply` runs terraform apply and then checks backend `/healthz` and frontend root URL from terraform outputs.
