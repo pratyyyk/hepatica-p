@@ -80,9 +80,34 @@ class Settings(BaseSettings):
     max_upload_bytes: int = Field(default=25 * 1024 * 1024)
     presigned_expiration_seconds: int = Field(default=900)
 
+    upload_mode: Literal["auto", "local", "s3"] = "auto"
+    local_storage_dir: Path = REPO_ROOT / "backend" / "artifacts"
+
     @property
     def is_local_dev(self) -> bool:
         return self.environment.lower() == "development"
+
+    @property
+    def resolved_upload_mode(self) -> Literal["local", "s3"]:
+        if self.upload_mode != "auto":
+            return self.upload_mode
+        return "local" if self.is_local_dev else "s3"
+
+    @property
+    def local_storage_dir_resolved(self) -> Path:
+        path = Path(self.local_storage_dir)
+        if path.is_absolute():
+            return path
+        # If a relative path is provided via env, make it repo-root relative.
+        return (REPO_ROOT / path).resolve()
+
+    @property
+    def local_upload_dir(self) -> Path:
+        return self.local_storage_dir_resolved / "uploads"
+
+    @property
+    def local_report_dir(self) -> Path:
+        return self.local_storage_dir_resolved / "reports"
 
     @property
     def cookie_secure(self) -> bool:

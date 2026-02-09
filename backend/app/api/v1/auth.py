@@ -315,7 +315,7 @@ def logout(
 def firebase_login(
     request: Request,
     response: Response,
-    payload: FirebaseLoginRequest,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     cfg: Settings = Depends(get_settings),
 ):
@@ -324,11 +324,16 @@ def firebase_login(
 
     _require_firebase_settings(cfg)
 
+    try:
+        parsed_payload = FirebaseLoginRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
     token_resp = requests.post(
         f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={cfg.firebase_web_api_key}",
         json={
-            "email": payload.email,
-            "password": payload.password,
+            "email": parsed_payload.email,
+            "password": parsed_payload.password,
             "returnSecureToken": True,
         },
         timeout=10,

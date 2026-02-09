@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
 from pydantic import ValidationError
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import RequestUser, assert_patient_owned_by_user, get_request_user
@@ -17,6 +17,26 @@ from app.services.timeline import append_timeline_event
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 settings = get_settings()
+
+
+@router.get("", response_model=list[PatientRead])
+@limiter.limit(settings.rate_limit_read_per_user, key_func=user_or_ip_key)
+def list_patients(
+    request: Request,
+    response: Response,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+    db: Session = Depends(get_db),
+    req_user: RequestUser = Depends(get_request_user),
+):
+    rows = db.scalars(
+        select(Patient)
+        .where(Patient.created_by == req_user.db_user.id)
+        .order_by(desc(Patient.created_at))
+        .limit(limit)
+        .offset(offset)
+    ).all()
+    return list(rows)
 
 
 @router.post("", response_model=PatientRead, status_code=status.HTTP_201_CREATED)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
 from uuid import uuid4
 
 import boto3
@@ -96,14 +97,14 @@ def upload_pdf(*, report_id: str, pdf_bytes: bytes, settings: Settings) -> str:
         )
         return key
     except (BotoCoreError, ClientError):
-        local_path = f"/tmp/{report_id}.pdf"
-        with open(local_path, "wb") as f:
-            f.write(pdf_bytes)
-        return local_path
+        settings.local_report_dir.mkdir(parents=True, exist_ok=True)
+        local_path = (settings.local_report_dir / f"{report_id}-{uuid4().hex}.pdf").resolve()
+        local_path.write_bytes(pdf_bytes)
+        return str(local_path)
 
 
 def build_download_url(*, object_key: str, settings: Settings) -> str:
-    if object_key.startswith("/tmp/"):
+    if Path(object_key).is_absolute():
         return object_key
     s3 = boto3.client("s3", region_name=settings.aws_region)
     try:

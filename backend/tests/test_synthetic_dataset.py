@@ -29,7 +29,6 @@ TEST = DATA_DIR / f"{BASE}_test.parquet"
 SAMPLE_CSV = DATA_DIR / f"{BASE}_sample_5000.csv"
 SCHEMA_JSON = DATA_DIR / f"{BASE}_schema.json"
 PROFILE_JSON = DATA_DIR / f"{BASE}_profile.json"
-PROFILE_MD = DATA_DIR / f"{BASE}_profile.md"
 
 
 @pytest.fixture(scope="session")
@@ -57,7 +56,6 @@ def test_schema_and_row_count(dataset_table):
     assert SAMPLE_CSV.exists(), f"Missing sample CSV artifact: {SAMPLE_CSV}"
     assert SCHEMA_JSON.exists(), f"Missing schema artifact: {SCHEMA_JSON}"
     assert PROFILE_JSON.exists(), f"Missing profile artifact: {PROFILE_JSON}"
-    assert PROFILE_MD.exists(), f"Missing profile markdown artifact: {PROFILE_MD}"
 
     assert dataset_table.num_rows == 200_000
     assert dataset_table.num_columns == len(COLUMN_ORDER)

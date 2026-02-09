@@ -20,7 +20,12 @@ __pycache__/
 node_modules/
 .next/
 
+# Docs (intentionally removed from repo)
+docs/
+
 # Build and artifacts
+artifacts/
+backend/artifacts/
 backend/hepatica.db
 backend/test_hepatica.db
 ml/artifacts/*.pt
