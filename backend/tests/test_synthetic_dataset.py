@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +19,8 @@ from scripts.generate_synthetic_clinical_dataset import (
     generate_dataset_arrays,
 )
 
-DATA_DIR = Path("/Users/praty/hepatica-p/data/synthetic")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = Path(os.getenv("HEPATICA_SYNTH_DATA_DIR", str(REPO_ROOT / "data" / "synthetic")))
 BASE = SCHEMA_VERSION_DEFAULT
 FULL = DATA_DIR / f"{BASE}.parquet"
 TRAIN = DATA_DIR / f"{BASE}_train.parquet"
