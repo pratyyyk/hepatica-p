@@ -214,3 +214,18 @@ def test_cors_allowed_and_disallowed_origins(client):
         },
     )
     assert blocked.headers.get("access-control-allow-origin") != "https://evil.example"
+
+
+def test_model_status_endpoint(client):
+    dev_login(client, "doctor-status@example.com")
+    resp = client.get("/api/v1/models/status")
+    assert_status(resp, 200)
+
+    payload = resp.json()
+    assert "generated_at" in payload
+    assert "stage1" in payload
+    assert "stage2" in payload
+    assert "registry" in payload["stage1"]
+    assert "artifact_health" in payload["stage1"]
+    assert "registry" in payload["stage2"]
+    assert "artifact_health" in payload["stage2"]

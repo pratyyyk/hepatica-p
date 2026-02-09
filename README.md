@@ -48,6 +48,15 @@ python3.11 scripts/train.py
 python3.11 scripts/evaluate.py
 ```
 
+## Release Preflight (One Command)
+
+```bash
+cd /Users/praty/hepatica-p
+make preflight
+```
+
+This runs backend tests, backend smoke flow, frontend lint/audit/build, infra validation, and backend container build (if Docker daemon is available).
+
 ## API Contract
 
 OpenAPI spec: `/Users/praty/hepatica-p/docs/openapi.yaml`

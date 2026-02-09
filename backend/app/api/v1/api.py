@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.assessments import router as assessments_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.models import router as models_router
 from app.api.v1.patients import router as patients_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.scans import router as scans_router
@@ -13,6 +14,7 @@ api_router.include_router(auth_router)
 api_router.include_router(patients_router)
 api_router.include_router(assessments_router)
 api_router.include_router(scans_router)
+api_router.include_router(models_router)
 api_router.include_router(knowledge_router)
 api_router.include_router(reports_router)
 api_router.include_router(timeline_router)

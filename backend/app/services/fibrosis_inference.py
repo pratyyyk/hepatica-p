@@ -227,22 +227,35 @@ def validate_stage2_artifacts(
 
     model_path = model_artifact_path or settings.model_artifact_path
     temperature_path = temperature_artifact_path or settings.temperature_artifact_path
-    errors: list[str] = []
-
-    if not model_path.exists():
-        errors.append(f"missing model artifact: {model_path}")
-    elif not model_path.is_file():
-        errors.append(f"model artifact path is not a file: {model_path}")
-
-    if not temperature_path.exists():
-        errors.append(f"missing temperature artifact: {temperature_path}")
-    else:
-        try:
-            FibrosisModelRuntime._parse_temperature_artifact(temperature_path)
-        except Stage2ArtifactContractError as exc:
-            errors.append(str(exc))
+    errors = inspect_stage2_artifact_contract(
+        model_artifact_path=model_path,
+        temperature_artifact_path=temperature_path,
+    )
 
     if errors:
         raise Stage2ArtifactContractError(
             "Stage 2 artifact contract check failed: " + "; ".join(errors)
         )
+
+
+def inspect_stage2_artifact_contract(
+    *,
+    model_artifact_path: Path,
+    temperature_artifact_path: Path,
+) -> list[str]:
+    errors: list[str] = []
+
+    if not model_artifact_path.exists():
+        errors.append(f"missing model artifact: {model_artifact_path}")
+    elif not model_artifact_path.is_file():
+        errors.append(f"model artifact path is not a file: {model_artifact_path}")
+
+    if not temperature_artifact_path.exists():
+        errors.append(f"missing temperature artifact: {temperature_artifact_path}")
+    else:
+        try:
+            FibrosisModelRuntime._parse_temperature_artifact(temperature_artifact_path)
+        except Stage2ArtifactContractError as exc:
+            errors.append(str(exc))
+
+    return errors

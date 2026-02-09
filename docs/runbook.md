@@ -38,3 +38,12 @@ python3.11 scripts/evaluate.py
 ## Drift monitoring (weekly)
 
 Run `/Users/praty/hepatica-p/ml/scripts/drift_monitor.py` as a weekly scheduled job.
+
+## Release preflight
+
+```bash
+cd /Users/praty/hepatica-p
+make preflight
+```
+
+`make preflight` runs backend tests + smoke, frontend lint/audit/build, and infra validation.

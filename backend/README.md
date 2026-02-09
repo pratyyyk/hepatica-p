@@ -55,3 +55,11 @@ Notes:
 - `activate` is exclusive by default and deactivates other active versions for the same model name.
 - Use `--keep-others-active` to opt out of exclusive activation.
 - `deactivate` refuses to deactivate the last active version unless `--allow-zero-active` is set.
+
+## Model status endpoint
+
+Authenticated doctors can query active model versions and artifact health:
+
+```bash
+GET /api/v1/models/status
+```
