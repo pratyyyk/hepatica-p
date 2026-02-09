@@ -69,6 +69,9 @@ class Settings(BaseSettings):
 
     stage2_require_model_non_dev: bool = True
     stage2_registry_model_name: str = "fibrosis-efficientnet-b3"
+    # Stage 2 can enforce image-quality gates (blur/darkness/texture) before inference.
+    # For local demos, default to warn-only so the flow stays demoable while still surfacing issues.
+    stage2_quality_gate: Literal["auto", "strict", "warn", "off"] = "auto"
 
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     journals_path: Path = Path("/Users/praty/journals")
@@ -93,6 +96,12 @@ class Settings(BaseSettings):
         if self.upload_mode != "auto":
             return self.upload_mode
         return "local" if self.is_local_dev else "s3"
+
+    @property
+    def resolved_stage2_quality_gate(self) -> Literal["strict", "warn", "off"]:
+        if self.stage2_quality_gate != "auto":
+            return self.stage2_quality_gate
+        return "warn" if self.is_local_dev else "strict"
 
     @property
     def local_storage_dir_resolved(self) -> Path:

@@ -43,6 +43,13 @@ type ReportResponse = {
   created_at: string;
 };
 
+function extractQualityCodes(metrics: Record<string, unknown> | null | undefined): string[] {
+  if (!metrics) return [];
+  const raw = metrics["reason_codes"];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((v) => String(v));
+}
+
 export default function Stage2Page() {
   const { csrfToken, csrfHeaderName } = useSession();
   const { activePatientId } = useActivePatientId();
@@ -95,6 +102,7 @@ export default function Stage2Page() {
   }, [activePatientId, patientId]);
 
   const topStage = useMemo(() => fibrosis?.top1?.stage, [fibrosis]);
+  const outputQualityCodes = useMemo(() => extractQualityCodes(fibrosis?.quality_metrics), [fibrosis?.quality_metrics]);
 
   async function requestUploadUrl(e: FormEvent) {
     e.preventDefault();
@@ -262,6 +270,12 @@ export default function Stage2Page() {
         <CardHeader title="Inference Output" subtitle="Top stage + flags + softmax." />
         {fibrosis ? (
           <div className="stack">
+            {outputQualityCodes.length ? (
+              <InlineStatus tone="warn">
+                Quality warning (demo mode):{"\n"}
+                {outputQualityCodes.map((c) => `- ${c}`).join("\n")}
+              </InlineStatus>
+            ) : null}
             <div className="row">
               <Pill tone={fibrosis.confidence_flag === "LOW_CONFIDENCE" ? "warn" : "ok"}>
                 {fibrosis.top1.stage} ({fibrosis.top1.probability})

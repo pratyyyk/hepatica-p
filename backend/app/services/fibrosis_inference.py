@@ -5,6 +5,7 @@ import math
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
+from typing import Literal
 
 import boto3
 import numpy as np
@@ -29,6 +30,7 @@ class FibrosisPredictionResult:
     confidence_flag: ConfidenceFlag
     escalation_flag: EscalationFlag
     model_version: str
+    inference_mode: Literal["ml", "heuristic"]
 
 
 class FibrosisModelRuntime:
@@ -159,12 +161,14 @@ class FibrosisModelRuntime:
         arr = self._preprocess(image_bytes)
 
         if self._model:
+            inference_mode: Literal["ml", "heuristic"] = "ml"
             tensor = self._torch.from_numpy(arr).unsqueeze(0)
             with self._torch.no_grad():
                 logits = self._model(tensor).cpu().numpy()[0]
         else:
             if not self._allow_heuristic_fallback:
                 raise RuntimeError("Stage 2 ML model is unavailable and heuristic fallback is disabled")
+            inference_mode = "heuristic"
             logits = self._heuristic_logits(arr)
 
         logits = logits / max(self._temperature, 1e-3)
@@ -178,6 +182,9 @@ class FibrosisModelRuntime:
         confidence_flag = (
             ConfidenceFlag.LOW_CONFIDENCE if top1[1] < 0.60 else ConfidenceFlag.NORMAL
         )
+        if inference_mode == "heuristic":
+            # Heuristic is a dev-only placeholder; always treat as low confidence.
+            confidence_flag = ConfidenceFlag.LOW_CONFIDENCE
         escalation_flag = (
             EscalationFlag.SEVERE_STAGE_REVIEW
             if top1[0] in {FibrosisStage.F3, FibrosisStage.F4} and top1[1] >= 0.65
@@ -190,7 +197,8 @@ class FibrosisModelRuntime:
             top2=top2,
             confidence_flag=confidence_flag,
             escalation_flag=escalation_flag,
-            model_version=self.model_version,
+            model_version=self.model_version if inference_mode == "ml" else f"{self.model_version}::heuristic",
+            inference_mode=inference_mode,
         )
 
 

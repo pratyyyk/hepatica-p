@@ -208,18 +208,20 @@ def run_fibrosis_assessment(
         db.commit()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    gate = cfg.resolved_stage2_quality_gate
+    quality_warned = False
     quality = evaluate_quality(image_bytes)
     if not quality.is_valid:
-        scan_asset.status = "QUALITY_REJECTED"
-        db.commit()
-        detail: dict[str, object] = {"reason": "Image quality check failed", "codes": quality.reason_codes}
-        if cfg.is_local_dev:
-            # Safe for local demos/debugging; keep non-dev responses minimal.
-            detail["metrics"] = quality.metrics
-        raise HTTPException(
-            status_code=422,
-            detail=detail,
-        )
+        if gate == "strict":
+            scan_asset.status = "QUALITY_REJECTED"
+            db.commit()
+            detail: dict[str, object] = {"reason": "Image quality check failed", "codes": quality.reason_codes}
+            if cfg.is_local_dev:
+                # Safe for local demos/debugging; keep non-dev responses minimal.
+                detail["metrics"] = quality.metrics
+            raise HTTPException(status_code=422, detail=detail)
+        # Demo mode: allow the flow to complete but keep a clear signal in stored metrics.
+        quality_warned = True
 
     active_stage2_model = get_active_model(db, cfg.stage2_registry_model_name)
     stage2_model_version = format_model_version(
@@ -257,9 +259,14 @@ def run_fibrosis_assessment(
         top2=top2_payload,
         confidence_flag=pred.confidence_flag.value,
         escalation_flag=pred.escalation_flag.value,
-        quality_metrics=quality.metrics,
+        quality_metrics={
+            **quality.metrics,
+            "reason_codes": quality.reason_codes,
+            "is_valid": quality.is_valid,
+            "gate": gate,
+        },
     )
-    scan_asset.status = "PROCESSED"
+    scan_asset.status = "PROCESSED_WITH_WARNINGS" if quality_warned else "PROCESSED"
 
     db.add(row)
     db.flush()
