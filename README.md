@@ -7,7 +7,7 @@ Clinical workflow MVP for advanced fibrosis/cirrhosis risk triage and fibrosis s
 - Frontend: Next.js (`/frontend`)
 - Backend: FastAPI + SQLAlchemy (`/backend`)
 - ML: PyTorch training/evaluation (`/ml`)
-- Infra: Terraform on AWS (`/infra`)
+- Auth/Object Storage: Firebase-first (AWS Terraform remains legacy under `/infra`)
 
 ## Quick Start
 
@@ -31,6 +31,8 @@ npm install
 cp .env.local.example .env.local
 npm run dev
 ```
+
+Set `NEXT_PUBLIC_AUTH_PROVIDER=firebase` in `/Users/praty/hepatica-p/frontend/.env.local` for Firebase login UI.
 
 ### 3) Optional: Journal Ingestion
 

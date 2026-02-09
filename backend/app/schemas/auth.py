@@ -8,6 +8,11 @@ class DevLoginRequest(BaseModel):
     full_name: str | None = None
 
 
+class FirebaseLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class DevLoginResponse(BaseModel):
     user_id: str
     email: str

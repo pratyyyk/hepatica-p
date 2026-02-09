@@ -14,6 +14,7 @@ interface AuthSession {
 }
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const authProvider = (process.env.NEXT_PUBLIC_AUTH_PROVIDER || "firebase").toLowerCase();
 const showDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === "true";
 
 export default function HomePage() {
@@ -21,6 +22,8 @@ export default function HomePage() {
   const [sessionLoading, setSessionLoading] = useState(true);
 
   const [devEmail, setDevEmail] = useState("doctor@example.com");
+  const [firebaseEmail, setFirebaseEmail] = useState("");
+  const [firebasePassword, setFirebasePassword] = useState("");
   const [activePatientId, setActivePatientId] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [scanAssetId, setScanAssetId] = useState("");
@@ -130,6 +133,25 @@ export default function HomePage() {
 
   function startCognitoLogin() {
     window.location.href = `${apiBase}/api/v1/auth/login`;
+  }
+
+  async function handleFirebaseLogin(e: FormEvent) {
+    e.preventDefault();
+    setStatus("Authenticating with Firebase...");
+    await guarded(async () => {
+      const res = await fetch(`${apiBase}/api/v1/auth/firebase-login`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: firebaseEmail, password: firebasePassword }),
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      await bootstrapSession();
+    });
   }
 
   async function handleDevLogin(e: FormEvent) {
@@ -306,12 +328,39 @@ export default function HomePage() {
             </>
           ) : (
             <>
-              <p>Sign in using Cognito Hosted UI.</p>
-              <div className="row" style={{ marginTop: 10 }}>
-                <button type="button" onClick={startCognitoLogin}>
-                  Sign in with Cognito
-                </button>
-              </div>
+              {authProvider === "cognito" ? (
+                <>
+                  <p>Sign in using Cognito Hosted UI.</p>
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button type="button" onClick={startCognitoLogin}>
+                      Sign in with Cognito
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <form onSubmit={handleFirebaseLogin}>
+                  <p>Sign in using Firebase credentials.</p>
+                  <div className="field">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      value={firebaseEmail}
+                      onChange={(e) => setFirebaseEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      value={firebasePassword}
+                      onChange={(e) => setFirebasePassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button type="submit">Sign in with Firebase</button>
+                </form>
+              )}
               {showDevLogin && (
                 <form onSubmit={handleDevLogin} style={{ marginTop: 12 }}>
                   <div className="field">

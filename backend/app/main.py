@@ -73,6 +73,7 @@ async def csrf_protection_middleware(request: Request, call_next):
     exempt_paths = {
         "/api/v1/auth/login",
         "/api/v1/auth/callback",
+        "/api/v1/auth/firebase-login",
         "/api/v1/auth/dev-login",
     }
 

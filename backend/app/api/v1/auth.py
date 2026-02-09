@@ -16,10 +16,16 @@ from sqlalchemy.orm import Session
 from app.api.deps import RequestUser, get_request_user
 from app.core.config import Settings, get_settings
 from app.core.rate_limit import limiter
-from app.core.security import dev_auth_route_available, verify_cognito_token
+from app.core.security import dev_auth_route_available, verify_cognito_token, verify_firebase_token
 from app.db.models import User
 from app.db.session import get_db
-from app.schemas.auth import AuthSessionResponse, DevLoginRequest, DevLoginResponse, LogoutResponse
+from app.schemas.auth import (
+    AuthSessionResponse,
+    DevLoginRequest,
+    DevLoginResponse,
+    FirebaseLoginRequest,
+    LogoutResponse,
+)
 from app.services.audit import write_audit_log
 from app.services.auth_session import create_auth_session, revoke_session
 from app.services.session_crypto import (
@@ -43,12 +49,23 @@ def _normalized_cognito_domain(domain: str) -> str:
     return f"https://{trimmed.rstrip('/')}"
 
 
-def _require_bff_settings(cfg: Settings) -> None:
+def _require_cognito_settings(cfg: Settings) -> None:
     required = {
         "COGNITO_CLIENT_ID": cfg.cognito_client_id,
         "COGNITO_USER_POOL_ID": cfg.cognito_user_pool_id,
         "COGNITO_DOMAIN": cfg.cognito_domain,
         "OAUTH_REDIRECT_URI": cfg.oauth_redirect_uri,
+        "SESSION_ENCRYPTION_KEY": cfg.session_encryption_key,
+    }
+    missing = [k for k, v in required.items() if not v]
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Missing auth config: {', '.join(missing)}")
+
+
+def _require_firebase_settings(cfg: Settings) -> None:
+    required = {
+        "FIREBASE_PROJECT_ID": cfg.firebase_project_id,
+        "FIREBASE_WEB_API_KEY": cfg.firebase_web_api_key,
         "SESSION_ENCRYPTION_KEY": cfg.session_encryption_key,
     }
     missing = [k for k, v in required.items() if not v]
@@ -86,7 +103,16 @@ def login(
     db: Session = Depends(get_db),
     cfg: Settings = Depends(get_settings),
 ):
-    _require_bff_settings(cfg)
+    if cfg.auth_provider == "firebase":
+        return JSONResponse(
+            {
+                "provider": "firebase",
+                "login_endpoint": "/api/v1/auth/firebase-login",
+                "message": "Use firebase-login with email/password to create a session cookie.",
+            }
+        )
+
+    _require_cognito_settings(cfg)
 
     state = generate_state()
     nonce = generate_nonce()
@@ -148,7 +174,10 @@ def callback(
     db: Session = Depends(get_db),
     cfg: Settings = Depends(get_settings),
 ):
-    _require_bff_settings(cfg)
+    if cfg.auth_provider != "cognito":
+        raise HTTPException(status_code=404, detail="Not found")
+
+    _require_cognito_settings(cfg)
 
     context_cookie = request.cookies.get(cfg.login_context_cookie_name)
     if not context_cookie:
@@ -278,6 +307,82 @@ def logout(
     response.delete_cookie(cfg.session_cookie_name, path="/")
     response.delete_cookie(cfg.csrf_cookie_name, path="/")
     response.delete_cookie(cfg.login_context_cookie_name, path="/api/v1/auth")
+    return response
+
+
+@router.post("/firebase-login", response_model=DevLoginResponse)
+@limiter.limit(settings.rate_limit_auth_per_minute, key_func=get_remote_address)
+def firebase_login(
+    request: Request,
+    response: Response,
+    payload: FirebaseLoginRequest,
+    db: Session = Depends(get_db),
+    cfg: Settings = Depends(get_settings),
+):
+    if cfg.auth_provider != "firebase":
+        raise HTTPException(status_code=404, detail="Not found")
+
+    _require_firebase_settings(cfg)
+
+    token_resp = requests.post(
+        f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={cfg.firebase_web_api_key}",
+        json={
+            "email": payload.email,
+            "password": payload.password,
+            "returnSecureToken": True,
+        },
+        timeout=10,
+    )
+    if token_resp.status_code >= 400:
+        raise HTTPException(status_code=401, detail="Invalid Firebase credentials")
+
+    token_payload = token_resp.json()
+    id_token = token_payload.get("idToken")
+    refresh_token = token_payload.get("refreshToken")
+    if not id_token or not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing required Firebase tokens")
+
+    auth_ctx = verify_firebase_token(id_token, cfg)
+
+    user = db.scalar(select(User).where(User.email == auth_ctx.email))
+    if user is None:
+        user = User(email=auth_ctx.email, full_name=auth_ctx.email, role=auth_ctx.role)
+        db.add(user)
+        db.flush()
+    else:
+        user.role = auth_ctx.role
+
+    claims = jwt.get_unverified_claims(id_token)
+    exp = claims.get("exp")
+    if exp is None:
+        raise HTTPException(status_code=401, detail="id_token missing exp")
+    id_token_expires_at = datetime.fromtimestamp(int(exp), tz=timezone.utc)
+
+    auth_session = create_auth_session(
+        db=db,
+        user_id=user.id,
+        refresh_token=refresh_token,
+        id_token_expires_at=id_token_expires_at,
+        settings=cfg,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    write_audit_log(
+        db,
+        user_id=user.id,
+        action="LOGIN_COMPLETED",
+        resource_type="auth",
+        resource_id=auth_session.id,
+        metadata={"email": user.email, "mode": "firebase"},
+    )
+    db.commit()
+
+    csrf_token = generate_csrf_token()
+    response = JSONResponse(
+        DevLoginResponse(user_id=user.id, email=user.email, role=user.role).model_dump()
+    )
+    _set_auth_cookies(response, cfg, auth_session.id, csrf_token)
     return response
 
 

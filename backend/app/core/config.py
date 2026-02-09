@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     s3_report_bucket: str = "hepatica-reports"
 
     auth_mode: Literal["bff", "dev_header"] = "bff"
+    auth_provider: Literal["firebase", "cognito"] = "firebase"
     enable_dev_auth: bool = False
 
     # Backward compatibility (legacy). No longer used for primary auth decisions.
@@ -35,6 +36,11 @@ class Settings(BaseSettings):
     cognito_client_id: str | None = None
     cognito_region: str = "us-east-1"
     cognito_domain: str = ""
+    firebase_project_id: str = ""
+    firebase_web_api_key: str = ""
+    firebase_jwks_url: str = (
+        "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+    )
 
     oauth_redirect_uri: str = "http://localhost:8000/api/v1/auth/callback"
     oauth_logout_redirect_uri: str = "http://localhost:3000"

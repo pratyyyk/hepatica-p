@@ -1,6 +1,6 @@
 # UAT Scenarios (10)
 
-1. Doctor login with valid Cognito account; dashboard loads.
+1. Doctor login with valid Firebase account; dashboard loads.
 2. Create new patient with valid de-identified payload.
 3. Stage 1 with low-risk inputs returns `LOW` and persists timeline event.
 4. Stage 1 with high-risk inputs returns `HIGH` and escalates probability boost when BMI>=30 and T2DM=true.

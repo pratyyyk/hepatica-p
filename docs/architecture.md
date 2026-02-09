@@ -2,10 +2,10 @@
 
 ## Flow
 
-1. Doctor authenticates via Cognito (or dev login mode).
+1. Doctor authenticates via Firebase Auth (or dev login mode).
 2. Doctor creates/selects de-identified patient.
 3. Stage 1 endpoint computes FIB-4/APRI risk tier and persists output.
-4. Scan upload URL is issued; file is uploaded to S3.
+4. Scan upload URL is issued; file is uploaded to object storage (Firebase Storage/GCS or local fallback).
 5. Stage 2 endpoint loads scan, runs antivirus hook + quality checks, infers fibrosis stage.
 6. Knowledge endpoint retrieves journal chunks and synthesizes cited guidance blocks.
 7. Report endpoint generates PDF and persists report metadata.
@@ -16,16 +16,16 @@
 - `/Users/praty/hepatica-p/backend`: FastAPI + DB + services + tests.
 - `/Users/praty/hepatica-p/frontend`: Next.js doctor dashboard.
 - `/Users/praty/hepatica-p/ml`: training/evaluation artifacts and scripts.
-- `/Users/praty/hepatica-p/infra`: Terraform AWS baseline.
+- `/Users/praty/hepatica-p/infra`: legacy Terraform AWS baseline (optional).
 - `/Users/praty/hepatica-p/docs`: API and implementation docs.
 
 ## Data Stores
 
 - PostgreSQL: transactional entities + knowledge chunk metadata.
 - pgvector-compatible embedding column for chunk vectors.
-- S3 scan bucket: uploaded scan assets.
-- S3 report bucket: rendered PDF reports.
-- S3 model bucket: model artifacts.
+- Scan object storage: uploaded scan assets.
+- Report object storage: rendered PDF reports.
+- Model artifact storage: model artifacts.
 
 ## Security Controls (MVP)
 

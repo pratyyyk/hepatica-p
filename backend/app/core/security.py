@@ -45,9 +45,31 @@ class CognitoJwksCache:
         return self.data
 
 
+class FirebaseJwksCache:
+    def __init__(self) -> None:
+        self.data: dict[str, Any] | None = None
+        self.expires_at: float = 0
+
+    def get(self, settings: Settings) -> dict[str, Any]:
+        if self.data and time.time() < self.expires_at:
+            return self.data
+        if not settings.firebase_project_id:
+            raise HTTPException(status_code=500, detail="Firebase project is not configured")
+        resp = requests.get(settings.firebase_jwks_url, timeout=5)
+        resp.raise_for_status()
+        self.data = resp.json()
+        self.expires_at = time.time() + 3600
+        return self.data
+
+
 @lru_cache
 def _jwks_cache() -> CognitoJwksCache:
     return CognitoJwksCache()
+
+
+@lru_cache
+def _firebase_jwks_cache() -> FirebaseJwksCache:
+    return FirebaseJwksCache()
 
 
 def _is_dev_header_mode_enabled(settings: Settings) -> bool:
@@ -94,6 +116,38 @@ def verify_cognito_token(token: str, settings: Settings) -> AuthContext:
         groups = groups_raw
 
     role = "DOCTOR" if "DOCTOR" in groups or not groups else str(groups[0])
+    return AuthContext(user_id=sub, email=email, role=role)
+
+
+def verify_firebase_token(token: str, settings: Settings) -> AuthContext:
+    jwks = _firebase_jwks_cache().get(settings)
+    unverified = jwt.get_unverified_header(token)
+    kid = unverified.get("kid")
+    key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+    if not key:
+        raise HTTPException(status_code=401, detail="Unable to verify Firebase token key")
+
+    issuer = f"https://securetoken.google.com/{settings.firebase_project_id}"
+    try:
+        payload = jwt.decode(
+            token,
+            key,
+            algorithms=["RS256"],
+            audience=settings.firebase_project_id,
+            issuer=issuer,
+            options={"verify_at_hash": False},
+        )
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Invalid Firebase token") from exc
+
+    email = payload.get("email")
+    sub = payload.get("sub") or payload.get("user_id")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Invalid Firebase token payload")
+    if not email:
+        email = f"{sub}@firebase.local"
+
+    role = str(payload.get("role") or "DOCTOR")
     return AuthContext(user_id=sub, email=email, role=role)
 
 
