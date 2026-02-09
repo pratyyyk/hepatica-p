@@ -229,3 +229,9 @@ def test_model_status_endpoint(client):
     assert "artifact_health" in payload["stage1"]
     assert "registry" in payload["stage2"]
     assert "artifact_health" in payload["stage2"]
+    assert payload["severity"] in {"OK", "WARN", "FAIL"}
+    assert isinstance(payload["ready_for_release"], bool)
+    assert payload["stage1"]["artifact_health"]["severity"] in {"OK", "WARN", "FAIL"}
+    assert payload["stage2"]["artifact_health"]["severity"] in {"OK", "WARN", "FAIL"}
+    assert isinstance(payload["stage1"]["ready_for_release"], bool)
+    assert isinstance(payload["stage2"]["ready_for_release"], bool)

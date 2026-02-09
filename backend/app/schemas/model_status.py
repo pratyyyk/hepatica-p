@@ -18,12 +18,15 @@ class ArtifactHealthStatus(BaseModel):
     strict_mode: bool
     ok: bool
     errors: list[str]
+    severity: str
+    ready_for_release: bool
 
 
 class Stage1ModelStatus(BaseModel):
     enabled: bool
     registry: ModelRegistryStatus
     artifact_health: ArtifactHealthStatus
+    ready_for_release: bool
 
 
 class Stage2ModelStatus(BaseModel):
@@ -31,9 +34,12 @@ class Stage2ModelStatus(BaseModel):
     registry: ModelRegistryStatus
     artifact_health: ArtifactHealthStatus
     temperature_artifact_path: str
+    ready_for_release: bool
 
 
 class ModelStatusResponse(BaseModel):
     generated_at: datetime
     stage1: Stage1ModelStatus
     stage2: Stage2ModelStatus
+    severity: str
+    ready_for_release: bool

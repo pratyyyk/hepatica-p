@@ -74,3 +74,8 @@ Authenticated doctors can query active model versions and artifact health:
 ```bash
 GET /api/v1/models/status
 ```
+
+Response includes:
+- per-stage `artifact_health.severity` (`OK|WARN|FAIL`)
+- per-stage `ready_for_release` boolean
+- top-level `severity` and `ready_for_release` summary
