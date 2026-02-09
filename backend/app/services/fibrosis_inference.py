@@ -27,12 +27,22 @@ class FibrosisPredictionResult:
 
 
 class FibrosisModelRuntime:
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        model_artifact_path: Path | None = None,
+        model_version: str | None = None,
+    ):
         self.settings = settings
+        self.model_artifact_path = model_artifact_path or settings.model_artifact_path
         self._model = None
         self._torch = None
         self._temperature = self._load_temperature()
-        self.model_version = "fibrosis-efficientnet-b3:v1"
+        self.model_version = model_version or "fibrosis-efficientnet-b3:v1"
+        self._allow_heuristic_fallback = (
+            self.settings.is_local_dev or not self.settings.stage2_require_model_non_dev
+        )
 
     def _load_temperature(self) -> float:
         if self.settings.temperature_artifact_path.exists():
@@ -46,8 +56,10 @@ class FibrosisModelRuntime:
     def _lazy_load_model(self):
         if self._model is not None:
             return
-        artifact = self.settings.model_artifact_path
+        artifact = self.model_artifact_path
         if not artifact.exists():
+            if not self._allow_heuristic_fallback:
+                raise RuntimeError(f"Stage 2 model artifact is missing: {artifact}")
             self._model = False
             return
         try:
@@ -63,7 +75,9 @@ class FibrosisModelRuntime:
             model.eval()
             self._model = model
             self._torch = torch
-        except Exception:
+        except Exception as exc:
+            if not self._allow_heuristic_fallback:
+                raise RuntimeError(f"Failed to load Stage 2 model artifact: {artifact}") from exc
             self._model = False
 
     def _preprocess(self, image_bytes: bytes) -> np.ndarray:
@@ -107,6 +121,8 @@ class FibrosisModelRuntime:
             with self._torch.no_grad():
                 logits = self._model(tensor).cpu().numpy()[0]
         else:
+            if not self._allow_heuristic_fallback:
+                raise RuntimeError("Stage 2 ML model is unavailable and heuristic fallback is disabled")
             logits = self._heuristic_logits(arr)
 
         logits = logits / max(self._temperature, 1e-3)

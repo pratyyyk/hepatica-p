@@ -24,8 +24,14 @@ from app.services.antivirus import run_antivirus_scan
 from app.services.audit import write_audit_log
 from app.services.dicom import maybe_convert_dicom
 from app.services.fibrosis_inference import FibrosisModelRuntime, fetch_scan_bytes
+from app.services.model_registry import (
+    format_model_version,
+    get_active_model,
+    resolve_local_artifact_path,
+)
 from app.services.quality import evaluate_quality
-from app.services.stage1 import run_stage1
+from app.services.stage1 import Stage1Result, run_stage1
+from app.services.stage1_ml_inference import Stage1ModelUnavailableError, predict_stage1_ml
 from app.services.timeline import append_timeline_event
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -41,15 +47,16 @@ def run_clinical_assessment(
     payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
+    cfg: Settings = Depends(get_settings),
 ):
     try:
         parsed_payload = ClinicalAssessmentCreate.model_validate(payload)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
-    assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
+    patient = assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
 
-    result = run_stage1(
+    rule_result = run_stage1(
         age=parsed_payload.age,
         ast=parsed_payload.ast,
         alt=parsed_payload.alt,
@@ -58,6 +65,49 @@ def run_clinical_assessment(
         bmi=parsed_payload.bmi,
         type2dm=parsed_payload.type2dm,
     )
+    result = rule_result
+
+    if cfg.stage1_ml_enabled:
+        active_stage1_model = get_active_model(db, cfg.stage1_registry_model_name)
+        stage1_model_version = (
+            format_model_version(
+                active_stage1_model,
+                default_name=cfg.stage1_registry_model_name,
+                default_version="v1",
+            )
+            if active_stage1_model is not None
+            else None
+        )
+        stage1_artifact_dir = resolve_local_artifact_path(
+            active_stage1_model,
+            cfg.stage1_model_artifact_dir,
+        )
+        try:
+            ml_result = predict_stage1_ml(
+                patient_sex=patient.sex,
+                age=parsed_payload.age,
+                bmi=parsed_payload.bmi,
+                type2dm=parsed_payload.type2dm,
+                ast=parsed_payload.ast,
+                alt=parsed_payload.alt,
+                platelets=parsed_payload.platelets,
+                ast_uln=parsed_payload.ast_uln,
+                artifact_dir=stage1_artifact_dir,
+                model_version_override=stage1_model_version,
+            )
+            result = Stage1Result(
+                fib4=rule_result.fib4,
+                apri=rule_result.apri,
+                risk_tier=ml_result.risk_tier,
+                probability=ml_result.probability,
+                model_version=ml_result.model_version,
+            )
+        except Stage1ModelUnavailableError as exc:
+            if cfg.stage1_require_model_non_dev and not cfg.is_local_dev:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Stage 1 ML model unavailable: {exc}",
+                ) from exc
 
     row = ClinicalAssessment(
         patient_id=parsed_payload.patient_id,
@@ -167,8 +217,26 @@ def run_fibrosis_assessment(
             detail={"reason": "Image quality check failed", "codes": quality.reason_codes},
         )
 
-    runtime = FibrosisModelRuntime(settings=cfg)
-    pred = runtime.predict(image_bytes)
+    active_stage2_model = get_active_model(db, cfg.stage2_registry_model_name)
+    stage2_model_version = format_model_version(
+        active_stage2_model,
+        default_name=cfg.stage2_registry_model_name,
+        default_version="v1",
+    )
+    stage2_artifact_path = resolve_local_artifact_path(
+        active_stage2_model,
+        cfg.model_artifact_path,
+    )
+
+    runtime = FibrosisModelRuntime(
+        settings=cfg,
+        model_artifact_path=stage2_artifact_path,
+        model_version=stage2_model_version,
+    )
+    try:
+        pred = runtime.predict(image_bytes)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     top2_payload = [
         {"stage": item[0].value, "probability": round(item[1], 6)} for item in pred.top2

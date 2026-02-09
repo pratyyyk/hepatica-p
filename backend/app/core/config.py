@@ -8,6 +8,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -53,12 +55,20 @@ class Settings(BaseSettings):
     rate_limit_read_per_user: str = "180/minute"
     rate_limit_enabled: bool = True
 
+    stage1_ml_enabled: bool = True
+    stage1_require_model_non_dev: bool = True
+    stage1_registry_model_name: str = "clinical-stage1-gbdt"
+    stage1_model_artifact_dir: Path = REPO_ROOT / "ml" / "artifacts" / "stage1"
+
+    stage2_require_model_non_dev: bool = True
+    stage2_registry_model_name: str = "fibrosis-efficientnet-b3"
+
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     journals_path: Path = Path("/Users/praty/journals")
-    local_image_root: Path = Path("/Users/praty/hepatica-p/data/Images")
-    model_artifact_path: Path = Path("/Users/praty/hepatica-p/ml/artifacts/fibrosis_model.pt")
+    local_image_root: Path = REPO_ROOT / "data" / "Images"
+    model_artifact_path: Path = REPO_ROOT / "ml" / "artifacts" / "fibrosis_model.pt"
     temperature_artifact_path: Path = Path(
-        "/Users/praty/hepatica-p/ml/artifacts/temperature_scaling.json"
+        REPO_ROOT / "ml" / "artifacts" / "temperature_scaling.json"
     )
 
     max_upload_bytes: int = Field(default=25 * 1024 * 1024)

@@ -22,6 +22,9 @@ httpx==0.28.1
 pypdf==5.9.0
 pydicom==3.0.1
 slowapi==0.1.9
+pandas==2.2.3
+joblib==1.4.2
+scikit-learn==1.6.1
 pytest==8.4.1
 pytest-cov==6.2.1
 ruff==0.12.9
