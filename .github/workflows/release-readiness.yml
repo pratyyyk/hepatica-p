@@ -1,0 +1,116 @@
+name: release-readiness
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release-readiness:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: development
+      AUTH_MODE: bff
+      ENABLE_DEV_AUTH: "true"
+      SESSION_ENCRYPTION_KEY: test-session-encryption-key
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      RATE_LIMIT_ENABLED: "false"
+      STAGE1_ML_ENABLED: "true"
+      STAGE1_REQUIRE_MODEL_NON_DEV: "true"
+      STAGE1_REGISTRY_MODEL_NAME: clinical-stage1-gbdt
+      STAGE1_MODEL_ARTIFACT_DIR: ../ml/artifacts/stage1
+      STAGE2_REQUIRE_MODEL_NON_DEV: "true"
+      STAGE2_REGISTRY_MODEL_NAME: fibrosis-efficientnet-b3
+      MODEL_ARTIFACT_PATH: ../ml/artifacts/fibrosis_model.pt
+      TEMPERATURE_ARTIFACT_PATH: ../ml/artifacts/temperature_scaling.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate release dry-run bundle
+        run: ./scripts/release_dry_run_pack.sh
+
+      - name: Resolve latest bundle path
+        id: bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_dir="$(ls -1dt artifacts/release/* | head -1)"
+          echo "bundle_dir=${bundle_dir}" >> "$GITHUB_OUTPUT"
+          echo "bundle_dir=${bundle_dir}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run release preflight
+        id: preflight
+        shell: bash
+        run: |
+          set +e
+          REQUIRE_DOCKER=false ./scripts/release_preflight.sh | tee "${{ steps.bundle.outputs.bundle_dir }}/preflight.log"
+          status=${PIPESTATUS[0]}
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Publish readiness summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          bundle_dir = Path("${{ steps.bundle.outputs.bundle_dir }}")
+          evidence_path = bundle_dir / "uat_evidence.json"
+          preflight_status = "${{ steps.preflight.outputs.status }}"
+
+          lines = ["## Release Readiness", ""]
+          lines.append(f"- Bundle: `{bundle_dir}`")
+          lines.append(f"- Preflight exit code: `{preflight_status}`")
+
+          if evidence_path.exists():
+            payload = json.loads(evidence_path.read_text())
+            lines.append(f"- Smoke all_ok: `{payload.get('all_ok')}`")
+            steps = payload.get("steps", [])
+            failed = [s for s in steps if not s.get("ok")]
+            lines.append(f"- Smoke steps: `{len(steps)}`")
+            lines.append(f"- Smoke failed steps: `{len(failed)}`")
+          else:
+            lines.append("- Smoke evidence: `missing`")
+
+          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upload release readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-${{ github.run_id }}
+          path: ${{ steps.bundle.outputs.bundle_dir }}
+          if-no-files-found: error
+
+      - name: Enforce preflight pass
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.preflight.outputs.status }}" != "0" ]; then
+            echo "release preflight failed" >&2
+            exit 1
+          fi
