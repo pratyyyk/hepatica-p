@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from pydantic import ValidationError
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
@@ -23,30 +24,35 @@ settings = get_settings()
 def create_upload_url(
     request: Request,
     response: Response,
-    payload: UploadUrlRequest,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
     cfg: Settings = Depends(get_settings),
 ):
-    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
+    try:
+        parsed_payload = UploadUrlRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
 
     try:
         ticket = generate_presigned_upload(
-            patient_id=payload.patient_id,
-            filename=payload.filename,
-            content_type=payload.content_type,
-            byte_size=payload.byte_size,
+            patient_id=parsed_payload.patient_id,
+            filename=parsed_payload.filename,
+            content_type=parsed_payload.content_type,
+            byte_size=parsed_payload.byte_size,
             settings=cfg,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     scan = ScanAsset(
-        patient_id=payload.patient_id,
+        patient_id=parsed_payload.patient_id,
         uploaded_by=req_user.db_user.id,
         object_key=ticket.object_key,
-        content_type=payload.content_type,
-        byte_size=payload.byte_size,
+        content_type=parsed_payload.content_type,
+        byte_size=parsed_payload.byte_size,
         status="PENDING_UPLOAD",
     )
     db.add(scan)

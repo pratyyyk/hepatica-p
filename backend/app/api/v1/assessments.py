@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from pydantic import ValidationError
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
@@ -37,32 +38,37 @@ settings = get_settings()
 def run_clinical_assessment(
     request: Request,
     response: Response,
-    payload: ClinicalAssessmentCreate,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
 ):
-    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
+    try:
+        parsed_payload = ClinicalAssessmentCreate.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
 
     result = run_stage1(
-        age=payload.age,
-        ast=payload.ast,
-        alt=payload.alt,
-        platelets=payload.platelets,
-        ast_uln=payload.ast_uln,
-        bmi=payload.bmi,
-        type2dm=payload.type2dm,
+        age=parsed_payload.age,
+        ast=parsed_payload.ast,
+        alt=parsed_payload.alt,
+        platelets=parsed_payload.platelets,
+        ast_uln=parsed_payload.ast_uln,
+        bmi=parsed_payload.bmi,
+        type2dm=parsed_payload.type2dm,
     )
 
     row = ClinicalAssessment(
-        patient_id=payload.patient_id,
+        patient_id=parsed_payload.patient_id,
         performed_by=req_user.db_user.id,
-        ast=payload.ast,
-        alt=payload.alt,
-        platelets=payload.platelets,
-        ast_uln=payload.ast_uln,
-        age=payload.age,
-        bmi=payload.bmi,
-        type2dm=payload.type2dm,
+        ast=parsed_payload.ast,
+        alt=parsed_payload.alt,
+        platelets=parsed_payload.platelets,
+        ast_uln=parsed_payload.ast_uln,
+        age=parsed_payload.age,
+        bmi=parsed_payload.bmi,
+        type2dm=parsed_payload.type2dm,
         fib4=result.fib4,
         apri=result.apri,
         risk_tier=result.risk_tier.value,
@@ -74,7 +80,7 @@ def run_clinical_assessment(
 
     append_timeline_event(
         db,
-        patient_id=payload.patient_id,
+        patient_id=parsed_payload.patient_id,
         event_type="CLINICAL_ASSESSMENT_COMPLETED",
         event_payload={
             "assessment_id": row.id,
@@ -112,15 +118,20 @@ def run_clinical_assessment(
 def run_fibrosis_assessment(
     request: Request,
     response: Response,
-    payload: FibrosisAssessmentCreate,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
     cfg: Settings = Depends(get_settings),
 ):
-    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
+    try:
+        parsed_payload = FibrosisAssessmentCreate.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
-    scan_asset = db.get(ScanAsset, payload.scan_asset_id)
-    if not scan_asset or scan_asset.patient_id != payload.patient_id:
+    assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
+
+    scan_asset = db.get(ScanAsset, parsed_payload.scan_asset_id)
+    if not scan_asset or scan_asset.patient_id != parsed_payload.patient_id:
         raise HTTPException(status_code=404, detail="Scan asset not found")
 
     try:
@@ -164,8 +175,8 @@ def run_fibrosis_assessment(
     ]
 
     row = FibrosisPrediction(
-        patient_id=payload.patient_id,
-        scan_asset_id=payload.scan_asset_id,
+        patient_id=parsed_payload.patient_id,
+        scan_asset_id=parsed_payload.scan_asset_id,
         performed_by=req_user.db_user.id,
         model_version=pred.model_version,
         softmax_vector={stage.value: prob for stage, prob in pred.softmax_vector.items()},
@@ -183,7 +194,7 @@ def run_fibrosis_assessment(
 
     append_timeline_event(
         db,
-        patient_id=payload.patient_id,
+        patient_id=parsed_payload.patient_id,
         event_type="FIBROSIS_PREDICTION_COMPLETED",
         event_payload={
             "prediction_id": row.id,

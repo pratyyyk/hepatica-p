@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from pydantic import ValidationError
 from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,35 +28,40 @@ settings = get_settings()
 def create_report(
     request: Request,
     response: Response,
-    payload: ReportCreate,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
     cfg: Settings = Depends(get_settings),
 ):
-    patient = assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
+    try:
+        parsed_payload = ReportCreate.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    patient = assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
 
     clinical = None
     fibrosis = None
 
-    if payload.clinical_assessment_id:
-        clinical = db.get(ClinicalAssessment, payload.clinical_assessment_id)
-        if not clinical or clinical.patient_id != payload.patient_id:
+    if parsed_payload.clinical_assessment_id:
+        clinical = db.get(ClinicalAssessment, parsed_payload.clinical_assessment_id)
+        if not clinical or clinical.patient_id != parsed_payload.patient_id:
             raise HTTPException(status_code=404, detail="Clinical assessment not found")
     if clinical is None:
         clinical = db.scalar(
             select(ClinicalAssessment)
-            .where(ClinicalAssessment.patient_id == payload.patient_id)
+            .where(ClinicalAssessment.patient_id == parsed_payload.patient_id)
             .order_by(ClinicalAssessment.created_at.desc())
         )
 
-    if payload.fibrosis_prediction_id:
-        fibrosis = db.get(FibrosisPrediction, payload.fibrosis_prediction_id)
-        if not fibrosis or fibrosis.patient_id != payload.patient_id:
+    if parsed_payload.fibrosis_prediction_id:
+        fibrosis = db.get(FibrosisPrediction, parsed_payload.fibrosis_prediction_id)
+        if not fibrosis or fibrosis.patient_id != parsed_payload.patient_id:
             raise HTTPException(status_code=404, detail="Fibrosis prediction not found")
     if fibrosis is None:
         fibrosis = db.scalar(
             select(FibrosisPrediction)
-            .where(FibrosisPrediction.patient_id == payload.patient_id)
+            .where(FibrosisPrediction.patient_id == parsed_payload.patient_id)
             .order_by(FibrosisPrediction.created_at.desc())
         )
 
@@ -104,7 +110,7 @@ def create_report(
     )
 
     row = Report(
-        patient_id=payload.patient_id,
+        patient_id=parsed_payload.patient_id,
         created_by=req_user.db_user.id,
         clinical_assessment_id=clinical.id if clinical else None,
         fibrosis_prediction_id=fibrosis.id if fibrosis else None,
@@ -121,7 +127,7 @@ def create_report(
 
     append_timeline_event(
         db,
-        patient_id=payload.patient_id,
+        patient_id=parsed_payload.patient_id,
         event_type="REPORT_GENERATED",
         event_payload={"report_id": row.id, "pdf_object_key": object_key},
         created_by=req_user.db_user.id,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from pydantic import ValidationError
 from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,23 +25,26 @@ settings = get_settings()
 def create_patient(
     request: Request,
     response: Response,
-    payload: PatientCreate,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
 ):
-    existing = db.scalar(select(Patient).where(Patient.external_id == payload.external_id))
-    if existing:
-        from fastapi import HTTPException
+    try:
+        parsed_payload = PatientCreate.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
+    existing = db.scalar(select(Patient).where(Patient.external_id == parsed_payload.external_id))
+    if existing:
         raise HTTPException(status_code=409, detail="Patient external_id already exists")
 
     patient = Patient(
-        external_id=payload.external_id,
-        sex=payload.sex,
-        age=payload.age,
-        bmi=payload.bmi,
-        type2dm=payload.type2dm,
-        notes=payload.notes,
+        external_id=parsed_payload.external_id,
+        sex=parsed_payload.sex,
+        age=parsed_payload.age,
+        bmi=parsed_payload.bmi,
+        type2dm=parsed_payload.type2dm,
+        notes=parsed_payload.notes,
         created_by=req_user.db_user.id,
     )
     db.add(patient)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from pydantic import ValidationError
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
@@ -22,25 +23,33 @@ settings = get_settings()
 def explain_prediction(
     request: Request,
     response: Response,
-    payload: KnowledgeExplainRequest,
+    payload: dict = Body(...),
     db: Session = Depends(get_db),
     req_user: RequestUser = Depends(get_request_user),
     cfg: Settings = Depends(get_settings),
 ):
-    assert_patient_owned_by_user(db, payload.patient_id, req_user.db_user.id)
+    try:
+        parsed_payload = KnowledgeExplainRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
-    query = f"fibrosis stage {payload.fibrosis_stage.value if payload.fibrosis_stage else 'unknown'} patient guidance"
-    retrieved = retrieve_chunks(db=db, query=query, settings=cfg, top_k=payload.top_k)
-    blocks = synthesize_blocks(fibrosis_stage=payload.fibrosis_stage, retrieved=retrieved)
+    assert_patient_owned_by_user(db, parsed_payload.patient_id, req_user.db_user.id)
+
+    query = (
+        f"fibrosis stage {parsed_payload.fibrosis_stage.value if parsed_payload.fibrosis_stage else 'unknown'} "
+        "patient guidance"
+    )
+    retrieved = retrieve_chunks(db=db, query=query, settings=cfg, top_k=parsed_payload.top_k)
+    blocks = synthesize_blocks(fibrosis_stage=parsed_payload.fibrosis_stage, retrieved=retrieved)
 
     write_audit_log(
         db,
         user_id=req_user.db_user.id,
         action="KNOWLEDGE_EXPLANATION_GENERATED",
         resource_type="patient",
-        resource_id=payload.patient_id,
+        resource_id=parsed_payload.patient_id,
         metadata={"chunks": len(retrieved)},
     )
     db.commit()
 
-    return KnowledgeExplainResponse(patient_id=payload.patient_id, blocks=blocks)
+    return KnowledgeExplainResponse(patient_id=parsed_payload.patient_id, blocks=blocks)
