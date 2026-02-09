@@ -1,4 +1,4 @@
-.PHONY: install run test lint init-db ingest-journals
+.PHONY: install run test lint init-db ingest-journals smoke
 
 install:
 	python3 -m pip install -r requirements.txt
@@ -17,3 +17,6 @@ test:
 
 lint:
 	ruff check app tests
+
+smoke:
+	python3 scripts/smoke_flow.py

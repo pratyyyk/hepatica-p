@@ -21,6 +21,13 @@ cd /Users/praty/hepatica-p/backend
 python3.11 -m pytest
 ```
 
+## One-command smoke flow
+
+```bash
+cd /Users/praty/hepatica-p/backend
+make smoke
+```
+
 ## Migrations
 
 ```bash
