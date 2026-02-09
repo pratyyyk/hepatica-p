@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -14,6 +15,10 @@ from app.core.config import Settings
 from app.core.enums import ConfidenceFlag, EscalationFlag, FibrosisStage
 
 STAGES = [FibrosisStage.F0, FibrosisStage.F1, FibrosisStage.F2, FibrosisStage.F3, FibrosisStage.F4]
+
+
+class Stage2ArtifactContractError(RuntimeError):
+    pass
 
 
 @dataclass
@@ -36,20 +41,50 @@ class FibrosisModelRuntime:
     ):
         self.settings = settings
         self.model_artifact_path = model_artifact_path or settings.model_artifact_path
+        self.temperature_artifact_path = settings.temperature_artifact_path
         self._model = None
         self._torch = None
-        self._temperature = self._load_temperature()
         self.model_version = model_version or "fibrosis-efficientnet-b3:v1"
-        self._allow_heuristic_fallback = (
-            self.settings.is_local_dev or not self.settings.stage2_require_model_non_dev
-        )
+        self._strict_mode = not self.settings.is_local_dev and self.settings.stage2_require_model_non_dev
+        self._allow_heuristic_fallback = not self._strict_mode
+        self._temperature = self._load_temperature()
+
+    @staticmethod
+    def _parse_temperature_artifact(path: Path) -> float:
+        try:
+            payload = json.loads(path.read_text())
+        except Exception as exc:
+            raise Stage2ArtifactContractError(
+                f"Stage 2 temperature artifact is invalid JSON: {path}"
+            ) from exc
+
+        if not isinstance(payload, dict):
+            raise Stage2ArtifactContractError(
+                f"Stage 2 temperature artifact payload must be an object: {path}"
+            )
+
+        raw_temperature = payload.get("temperature", 1.0)
+        try:
+            temperature = float(raw_temperature)
+        except (TypeError, ValueError) as exc:
+            raise Stage2ArtifactContractError(
+                f"Stage 2 temperature artifact has non-numeric temperature: {path}"
+            ) from exc
+
+        if not math.isfinite(temperature) or temperature <= 0:
+            raise Stage2ArtifactContractError(
+                f"Stage 2 temperature artifact must provide temperature > 0: {path}"
+            )
+
+        return temperature
 
     def _load_temperature(self) -> float:
-        if self.settings.temperature_artifact_path.exists():
+        if self.temperature_artifact_path.exists():
             try:
-                payload = json.loads(self.settings.temperature_artifact_path.read_text())
-                return float(payload.get("temperature", 1.0))
-            except Exception:
+                return self._parse_temperature_artifact(self.temperature_artifact_path)
+            except Stage2ArtifactContractError as exc:
+                if self._strict_mode:
+                    raise RuntimeError(str(exc)) from exc
                 return 1.0
         return 1.0
 
@@ -113,6 +148,13 @@ class FibrosisModelRuntime:
         return base
 
     def predict(self, image_bytes: bytes) -> FibrosisPredictionResult:
+        if self._strict_mode:
+            validate_stage2_artifacts(
+                self.settings,
+                model_artifact_path=self.model_artifact_path,
+                temperature_artifact_path=self.temperature_artifact_path,
+            )
+
         self._lazy_load_model()
         arr = self._preprocess(image_bytes)
 
@@ -171,3 +213,36 @@ def fetch_scan_bytes(*, object_key: str, settings: Settings) -> bytes:
             return matches[0].read_bytes()
 
     raise FileNotFoundError(f"Unable to load scan bytes for key: {object_key}")
+
+
+def validate_stage2_artifacts(
+    settings: Settings,
+    *,
+    model_artifact_path: Path | None = None,
+    temperature_artifact_path: Path | None = None,
+) -> None:
+    strict_mode = not settings.is_local_dev and settings.stage2_require_model_non_dev
+    if not strict_mode:
+        return
+
+    model_path = model_artifact_path or settings.model_artifact_path
+    temperature_path = temperature_artifact_path or settings.temperature_artifact_path
+    errors: list[str] = []
+
+    if not model_path.exists():
+        errors.append(f"missing model artifact: {model_path}")
+    elif not model_path.is_file():
+        errors.append(f"model artifact path is not a file: {model_path}")
+
+    if not temperature_path.exists():
+        errors.append(f"missing temperature artifact: {temperature_path}")
+    else:
+        try:
+            FibrosisModelRuntime._parse_temperature_artifact(temperature_path)
+        except Stage2ArtifactContractError as exc:
+            errors.append(str(exc))
+
+    if errors:
+        raise Stage2ArtifactContractError(
+            "Stage 2 artifact contract check failed: " + "; ".join(errors)
+        )

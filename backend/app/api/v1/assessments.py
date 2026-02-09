@@ -228,12 +228,12 @@ def run_fibrosis_assessment(
         cfg.model_artifact_path,
     )
 
-    runtime = FibrosisModelRuntime(
-        settings=cfg,
-        model_artifact_path=stage2_artifact_path,
-        model_version=stage2_model_version,
-    )
     try:
+        runtime = FibrosisModelRuntime(
+            settings=cfg,
+            model_artifact_path=stage2_artifact_path,
+            model_version=stage2_model_version,
+        )
         pred = runtime.predict(image_bytes)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

@@ -12,12 +12,18 @@ from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.db.init_db import init_db
 from app.services.audit import record_auth_failure
+from app.services.fibrosis_inference import Stage2ArtifactContractError, validate_stage2_artifacts
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if not settings.is_local_dev and settings.stage2_require_model_non_dev:
+        try:
+            validate_stage2_artifacts(settings)
+        except Stage2ArtifactContractError as exc:
+            raise RuntimeError(f"Stage 2 startup guard failed: {exc}") from exc
     init_db()
     yield
 

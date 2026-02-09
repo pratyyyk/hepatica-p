@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import json
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,11 @@ from PIL import Image
 
 from app.core.config import Settings
 from app.core.enums import RiskTier
-from app.services.fibrosis_inference import FibrosisModelRuntime
+from app.services.fibrosis_inference import (
+    FibrosisModelRuntime,
+    Stage2ArtifactContractError,
+    validate_stage2_artifacts,
+)
 from app.services.stage1_ml_inference import predict_stage1_ml
 
 
@@ -51,16 +56,19 @@ def test_stage1_ml_prediction_smoke():
 
 
 def test_fibrosis_runtime_requires_model_outside_dev(tmp_path: Path):
+    temperature_path = tmp_path / "temperature.json"
+    temperature_path.write_text(json.dumps({"temperature": 1.0}))
+
     settings = Settings(
         environment="production",
         stage2_require_model_non_dev=True,
         model_artifact_path=tmp_path / "missing-model.pt",
-        temperature_artifact_path=tmp_path / "missing-temperature.json",
+        temperature_artifact_path=temperature_path,
         local_image_root=tmp_path,
     )
 
     runtime = FibrosisModelRuntime(settings=settings)
-    with pytest.raises(RuntimeError, match="Stage 2 model artifact is missing"):
+    with pytest.raises(RuntimeError, match="missing model artifact"):
         runtime.predict(_sample_image_bytes())
 
 
@@ -78,3 +86,37 @@ def test_fibrosis_runtime_uses_fallback_in_local_dev(tmp_path: Path):
 
     assert result.top1[0].value in {"F0", "F1", "F2", "F3", "F4"}
     assert result.model_version
+
+
+def test_validate_stage2_artifacts_missing_temperature_outside_dev(tmp_path: Path):
+    model_path = tmp_path / "model.pt"
+    model_path.write_bytes(b"not-a-real-model")
+
+    settings = Settings(
+        environment="production",
+        stage2_require_model_non_dev=True,
+        model_artifact_path=model_path,
+        temperature_artifact_path=tmp_path / "missing-temperature.json",
+        local_image_root=tmp_path,
+    )
+
+    with pytest.raises(Stage2ArtifactContractError, match="missing temperature artifact"):
+        validate_stage2_artifacts(settings)
+
+
+def test_validate_stage2_artifacts_invalid_temperature_outside_dev(tmp_path: Path):
+    model_path = tmp_path / "model.pt"
+    model_path.write_bytes(b"not-a-real-model")
+    temperature_path = tmp_path / "temperature.json"
+    temperature_path.write_text("{invalid-json}")
+
+    settings = Settings(
+        environment="production",
+        stage2_require_model_non_dev=True,
+        model_artifact_path=model_path,
+        temperature_artifact_path=temperature_path,
+        local_image_root=tmp_path,
+    )
+
+    with pytest.raises(Stage2ArtifactContractError, match="invalid JSON"):
+        validate_stage2_artifacts(settings)
