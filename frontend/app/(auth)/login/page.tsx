@@ -59,9 +59,6 @@ export default function LoginPage() {
         <h1 className="heroTitle">Hepatica</h1>
         <p className="heroSubtitle">Clinical risk triage + fibrosis staging. Local-only demo flow.</p>
         <div className="heroBadges">
-          <Pill tone="ok">No AWS required</Pill>
-          <Pill tone="ok">No Firebase required</Pill>
-          <Pill tone="neutral">FastAPI + Next.js</Pill>
         </div>
       </div>
 
