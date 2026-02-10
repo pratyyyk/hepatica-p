@@ -54,7 +54,8 @@ class Settings(BaseSettings):
     login_context_cookie_name: str = "hp_login_ctx"
     session_encryption_key: str = "replace-with-strong-session-key"
 
-    cors_allowed_origins: str = "http://localhost:3000"
+    # Dev ergonomics: allow both localhost and 127.0.0.1 frontends without requiring env tweaks.
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     rate_limit_auth_per_minute: str = "20/minute"
     rate_limit_mutating_per_user: str = "60/minute"

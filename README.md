@@ -16,6 +16,26 @@ qualified clinician and validated against local guidelines.
 - Knowledge blocks (retrieval + synthesis; local fallback embeddings)
 - Report PDF generation and in-browser viewing
 
+## Model Accuracy (Last Trained)
+
+These numbers are from the most recent local retrain on this machine (seed `42`). Re-run training to reproduce and refresh.
+
+- Stage 1 (tabular, `data/synthetic/stage1_synth_v1.parquet`; model `clinical-stage1-gbdt:v20260210.0219.seed42`)
+  - Val: accuracy `0.997167`, macro-F1 `0.995589`
+  - Test: accuracy `0.996567`, macro-F1 `0.994597`
+- Stage 2 (image, `data/Images/`; model `fibrosis_model.pt`)
+  - Val: accuracy `0.975764`, macro-F1 `0.966753`, severe recall (F2/F3/F4) `0.974790/0.899225/1.000000`
+  - Test: accuracy `0.959958`, macro-F1 `0.943888`, severe recall (F2/F3/F4) `0.890756/0.922481/0.980392`
+
+## Model Accuracy Test
+
+Fail-fast validation for the currently trained artifacts:
+
+```bash
+cd ml
+.venv/bin/python scripts/check_model_metrics.py
+```
+
 ## Tech Stack (Detailed)
 
 ### Frontend

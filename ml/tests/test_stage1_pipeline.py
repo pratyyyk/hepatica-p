@@ -62,6 +62,7 @@ def test_training_determinism(stage1_config, subset_bundle, val_eval):
 
     a = val_eval.metrics
     b = val_eval_2.metrics
+    assert "accuracy" in a["classification"]
     assert abs(a["classification"]["macro_f1"] - b["classification"]["macro_f1"]) <= 1e-6
     assert (
         abs(

@@ -86,8 +86,15 @@ def main() -> None:
 
     (artifact_dir / "classes.json").write_text(json.dumps(classes, indent=2))
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = build_model(num_classes=len(classes)).to(device)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+
+    print(f"device={device.type}")
+    model = build_model(num_classes=len(classes), pretrained=True).to(device)
 
     train_targets = [targets[idx] for idx in split.train_indices]
     class_weights = compute_class_weights(train_targets, num_classes=len(classes), device=device)
@@ -154,8 +161,10 @@ def main() -> None:
 
     summary = {
         "best_epoch": best_epoch,
+        "val_accuracy": val_metrics.accuracy,
         "val_macro_f1": val_metrics.macro_f1,
         "val_per_class_recall": val_metrics.per_class_recall,
+        "test_accuracy": test_metrics.accuracy,
         "test_macro_f1": test_metrics.macro_f1,
         "test_per_class_recall": test_metrics.per_class_recall,
         "thresholds": {

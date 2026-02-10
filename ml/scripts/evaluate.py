@@ -28,12 +28,19 @@ def main() -> None:
         data_root=Path(cfg["data_root"]),
         image_size=cfg["image_size"],
         batch_size=cfg["batch_size"],
-        num_workers=cfg["num_workers"],
+        # Keep evaluation single-process to avoid macOS multiprocessing spawn issues.
+        num_workers=0,
         split=split,
     )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = build_model(num_classes=len(classes)).to(device)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+
+    model = build_model(num_classes=len(classes), pretrained=False).to(device)
     state = torch.load(artifact_dir / "fibrosis_model.pt", map_location=device)
     model.load_state_dict(state)
     model.eval()
@@ -59,8 +66,10 @@ def main() -> None:
     test = eval_loader(test_loader)
 
     payload = {
+        "val_accuracy": val.accuracy,
         "val_macro_f1": val.macro_f1,
         "val_per_class_recall": val.per_class_recall,
+        "test_accuracy": test.accuracy,
         "test_macro_f1": test.macro_f1,
         "test_per_class_recall": test.per_class_recall,
     }

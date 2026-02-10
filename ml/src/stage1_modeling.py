@@ -13,6 +13,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
+    accuracy_score,
     confusion_matrix,
     f1_score,
     mean_absolute_error,
@@ -219,6 +220,7 @@ def evaluate_stage1_models(
     pred_prob = models.reg_probability.predict(X_t).astype(np.float64)
     pred_latent = models.reg_latent.predict(X_t).astype(np.float64)
 
+    accuracy = float(accuracy_score(y_cls, pred_cls))
     macro_f1 = float(f1_score(y_cls, pred_cls, labels=classes, average="macro", zero_division=0))
     recalls = recall_score(y_cls, pred_cls, labels=classes, average=None, zero_division=0)
     per_class_recall = {label: float(recalls[idx]) for idx, label in enumerate(classes)}
@@ -226,6 +228,7 @@ def evaluate_stage1_models(
     ece, ece_bins = _expected_calibration_error(y_true=y_cls, y_pred=pred_cls, pred_probs=pred_probs)
 
     cls_metrics = {
+        "accuracy": accuracy,
         "macro_f1": macro_f1,
         "per_class_recall": per_class_recall,
         "classes_order": classes,

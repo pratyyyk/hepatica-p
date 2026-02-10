@@ -5,8 +5,9 @@ import torch.nn as nn
 from torchvision.models import EfficientNet_B3_Weights, efficientnet_b3
 
 
-def build_model(num_classes: int) -> nn.Module:
-    model = efficientnet_b3(weights=EfficientNet_B3_Weights.IMAGENET1K_V1)
+def build_model(num_classes: int, *, pretrained: bool = True) -> nn.Module:
+    weights = EfficientNet_B3_Weights.IMAGENET1K_V1 if pretrained else None
+    model = efficientnet_b3(weights=weights)
     in_features = model.classifier[-1].in_features
     model.classifier[-1] = nn.Linear(in_features, num_classes)
     return model
