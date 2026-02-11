@@ -16,6 +16,7 @@ from app.core.config import Settings, get_settings
 from app.core.enums import FibrosisStage
 from app.core.rate_limit import limiter, user_or_ip_key
 from app.db.models import ClinicalAssessment, FibrosisPrediction, Report
+from app.db.models import Stage3Assessment
 from app.db.session import get_db
 from app.schemas.report import ReportCreate, ReportRead
 from app.services.audit import write_audit_log
@@ -52,6 +53,7 @@ def create_report(
 
     clinical = None
     fibrosis = None
+    stage3 = None
 
     if parsed_payload.clinical_assessment_id:
         clinical = db.get(ClinicalAssessment, parsed_payload.clinical_assessment_id)
@@ -73,6 +75,17 @@ def create_report(
             select(FibrosisPrediction)
             .where(FibrosisPrediction.patient_id == parsed_payload.patient_id)
             .order_by(FibrosisPrediction.created_at.desc())
+        )
+
+    if parsed_payload.stage3_assessment_id:
+        stage3 = db.get(Stage3Assessment, parsed_payload.stage3_assessment_id)
+        if not stage3 or stage3.patient_id != parsed_payload.patient_id:
+            raise HTTPException(status_code=404, detail="Stage 3 assessment not found")
+    if stage3 is None:
+        stage3 = db.scalar(
+            select(Stage3Assessment)
+            .where(Stage3Assessment.patient_id == parsed_payload.patient_id)
+            .order_by(Stage3Assessment.created_at.desc())
         )
 
     stage = fibrosis.top1_stage if fibrosis else None
@@ -114,6 +127,19 @@ def create_report(
                 "model_version": fibrosis.model_version,
             }
             if fibrosis
+            else None
+        ),
+        stage3=(
+            {
+                "id": stage3.id,
+                "composite_risk_score": stage3.composite_risk_score,
+                "progression_risk_12m": stage3.progression_risk_12m,
+                "decomp_risk_12m": stage3.decomp_risk_12m,
+                "risk_tier": stage3.risk_tier,
+                "model_version": stage3.model_version,
+                "feature_snapshot_json": stage3.feature_snapshot_json,
+            }
+            if stage3
             else None
         ),
         knowledge_blocks=knowledge_blocks,

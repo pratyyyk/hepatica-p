@@ -23,3 +23,10 @@ class ConfidenceFlag(str, Enum):
 class EscalationFlag(str, Enum):
     NONE = "NONE"
     SEVERE_STAGE_REVIEW = "SEVERE_STAGE_REVIEW"
+
+
+class Stage3RiskTier(str, Enum):
+    LOW = "LOW"
+    MODERATE = "MODERATE"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"

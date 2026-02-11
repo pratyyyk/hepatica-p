@@ -24,3 +24,9 @@ def test_default_model_registry_rows_seeded(client):
         indexed[("fibrosis-efficientnet-b3", "v1")].artifact_uri
         == "file:///app/ml/artifacts/fibrosis_model.pt"
     )
+
+    assert ("multimodal-stage3-risk", "v1") in indexed
+    assert (
+        indexed[("multimodal-stage3-risk", "v1")].artifact_uri
+        == "file:///app/ml/artifacts/stage3"
+    )

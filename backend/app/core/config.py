@@ -74,6 +74,16 @@ class Settings(BaseSettings):
     # For local demos, default to warn-only so the flow stays demoable while still surfacing issues.
     stage2_quality_gate: Literal["auto", "strict", "warn", "off"] = "auto"
 
+    stage3_enabled: bool = False
+    stage3_monitoring_mode: Literal["scheduled_only"] = "scheduled_only"
+    stage3_monitor_interval_weeks: int = 10
+    stage3_alert_ppv_target: float = 0.85
+    stage3_alert_recall_floor: float = 0.65
+    stage3_stiffness_proxy_enabled: bool = True
+    stage3_require_model_non_dev: bool = True
+    stage3_registry_model_name: str = "multimodal-stage3-risk"
+    stage3_model_artifact_dir: Path = REPO_ROOT / "ml" / "artifacts" / "stage3"
+
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     journals_path: Path = Path("/Users/praty/journals")
     local_image_root: Path = REPO_ROOT / "data" / "Images"

@@ -24,9 +24,26 @@ Outputs under `ml/artifacts/`:
 
 Why temperature scaling: improves probability calibration while keeping inference runtime simple.
 
+## Stage 3 (Multimodal Longitudinal Risk)
+
+Goal: combine clinical non-invasive scores, Stage 2 image outputs, and liver stiffness signals into longitudinal
+risk monitoring with precision-focused alert thresholds.
+
+Synthetic pipeline:
+- `ml/scripts/generate_stage3_synthetic.py` (default target: 250k patients x 12 visits)
+
+Training + registration:
+- `ml/scripts/train_stage3.py`
+- `ml/scripts/register_stage3_model.py`
+
+Outputs under `ml/artifacts/stage3/`:
+- `stage3_risk_model.joblib`
+- `stage3_thresholds.json`
+- `stage3_feature_manifest.json`
+- `stage3_run_metadata.json`
+
 ## How Backend Uses ML
 
 - Stage 1: rule engine always runs; ML artifacts can override tier/probability when enabled and available.
 - Stage 2: in development, the backend can fall back to a heuristic logits model if artifacts are missing.
   In non-dev, artifacts can be required.
-

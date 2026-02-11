@@ -1,7 +1,7 @@
 # Testing
 
 This repo is a local-first prototype. The default happy path is:
-login (dev) -> patient -> Stage 1 -> upload scan (local) -> Stage 2 -> report PDF -> timeline.
+login (dev) -> patient -> Stage 1 -> Stage 3 (stiffness + multimodal risk) -> upload scan (local) -> Stage 2 -> report PDF -> timeline.
 
 ## Quick (recommended)
 
@@ -76,4 +76,3 @@ Then open `http://localhost:3000/login` and use a 1-click demo doctor:
 - `asha.singh@demo.hepatica`
 - `maya.chen@demo.hepatica`
 - `alex.rivera@demo.hepatica`
-

@@ -20,6 +20,29 @@ type Patient = {
 };
 
 type TimelineResponse = { patient_id: string; events: TimelineEvent[] };
+type Stage3HistoryResponse = {
+  patient_id: string;
+  assessments: {
+    id: string;
+    composite_risk_score: number;
+    progression_risk_12m: number;
+    decomp_risk_12m: number;
+    risk_tier: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+    created_at: string;
+  }[];
+};
+type Stage3AlertsResponse = {
+  patient_id: string;
+  alerts: {
+    id: string;
+    alert_type: string;
+    severity: string;
+    status: string;
+    score: number;
+    threshold: number;
+    created_at: string;
+  }[];
+};
 
 export default function PatientDetailPage() {
   const params = useParams<{ id: string }>();
@@ -27,6 +50,8 @@ export default function PatientDetailPage() {
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [stage3History, setStage3History] = useState<Stage3HistoryResponse["assessments"]>([]);
+  const [stage3Alerts, setStage3Alerts] = useState<Stage3AlertsResponse["alerts"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -36,8 +61,24 @@ export default function PatientDetailPage() {
     try {
       const p = await apiFetch<Patient>(`/api/v1/patients/${patientId}`);
       const t = await apiFetch<TimelineResponse>(`/api/v1/patients/${patientId}/timeline`);
+      let s3h: Stage3HistoryResponse["assessments"] = [];
+      let s3a: Stage3AlertsResponse["alerts"] = [];
+      try {
+        const history = await apiFetch<Stage3HistoryResponse>(`/api/v1/patients/${patientId}/stage3/history`);
+        s3h = history.assessments || [];
+      } catch {
+        s3h = [];
+      }
+      try {
+        const alerts = await apiFetch<Stage3AlertsResponse>(`/api/v1/patients/${patientId}/alerts`);
+        s3a = alerts.alerts || [];
+      } catch {
+        s3a = [];
+      }
       setPatient(p);
       setTimeline(t.events || []);
+      setStage3History(s3h);
+      setStage3Alerts(s3a);
       setActivePatientId(patientId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load patient");
@@ -91,6 +132,56 @@ export default function PatientDetailPage() {
             Refresh Timeline
           </Button>
         </div>
+      </Card>
+
+      <Card className="fadeIn" style={{ animationDelay: "140ms" }}>
+        <CardHeader title="Stage 3 Monitoring" subtitle="Latest multimodal scores + alerts." />
+        {loading ? (
+          <div className="empty">Loading...</div>
+        ) : (
+          <div className="stack">
+            {stage3History.length ? (
+              <div className="list">
+                {stage3History.slice(0, 4).map((s3) => (
+                  <div key={s3.id} className="listRow">
+                    <div className="listMain">
+                      <div className="listTitle">{s3.risk_tier}</div>
+                      <div className="listMeta">
+                        <Pill tone="neutral">Composite {(s3.composite_risk_score * 100).toFixed(1)}%</Pill>
+                        <Pill tone="neutral">12m Progress {(s3.progression_risk_12m * 100).toFixed(1)}%</Pill>
+                        <Pill tone="neutral">12m Decomp {(s3.decomp_risk_12m * 100).toFixed(1)}%</Pill>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">No Stage 3 assessments yet.</div>
+            )}
+
+            <div className="xaiTitle">Alerts</div>
+            {stage3Alerts.length ? (
+              <div className="alertTable">
+                <div className="alertHead">
+                  <span>Type</span>
+                  <span>Severity</span>
+                  <span>Score</span>
+                  <span>Status</span>
+                </div>
+                {stage3Alerts.slice(0, 6).map((a) => (
+                  <div key={a.id} className="alertRow">
+                    <span>{a.alert_type}</span>
+                    <span>{a.severity}</span>
+                    <span>{a.score.toFixed(3)} / {a.threshold.toFixed(3)}</span>
+                    <span>{a.status}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">No active Stage 3 alerts.</div>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );

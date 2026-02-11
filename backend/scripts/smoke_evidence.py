@@ -25,6 +25,7 @@ os.environ.setdefault("ENABLE_DEV_AUTH", "true")
 os.environ.setdefault("SESSION_ENCRYPTION_KEY", "smoke-session-encryption-key")
 os.environ.setdefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("STAGE3_ENABLED", "true")
 
 from app.core.config import get_settings
 
@@ -160,6 +161,38 @@ def run_evidence(out_json: Path, out_md: Path) -> None:
             )
         )
 
+        stiffness_body = {"measured_kpa": 22.8, "cap_dbm": 298, "source": "MEASURED"}
+        started = _utc_now()
+        stiffness_resp = client.post(
+            f"/api/v1/patients/{patient['id']}/stiffness",
+            json=stiffness_body,
+            headers=headers,
+        )
+        stiffness_step = _record_step(
+            step="stage3_stiffness_measurement",
+            response=stiffness_resp,
+            expected_status=200,
+            started_at=started,
+            request_body=stiffness_body,
+        )
+        steps.append(stiffness_step)
+        if not stiffness_step.ok:
+            raise RuntimeError(f"stage3_stiffness_measurement failed: {stiffness_resp.text}")
+        stiffness = stiffness_resp.json()
+
+        stage3_body = {"patient_id": patient["id"], "stiffness_measurement_id": stiffness["id"]}
+        started = _utc_now()
+        stage3_resp = client.post("/api/v1/assessments/stage3", json=stage3_body, headers=headers)
+        steps.append(
+            _record_step(
+                step="stage3_multimodal_assessment",
+                response=stage3_resp,
+                expected_status=200,
+                started_at=started,
+                request_body=stage3_body,
+            )
+        )
+
         invalid_upload_body = {
             "patient_id": patient["id"],
             "filename": "scan.exe",
@@ -214,6 +247,18 @@ def run_evidence(out_json: Path, out_md: Path) -> None:
             _record_step(
                 step="timeline_read",
                 response=timeline_resp,
+                expected_status=200,
+                started_at=started,
+                request_body=None,
+            )
+        )
+
+        started = _utc_now()
+        stage3_history_resp = client.get(f"/api/v1/patients/{patient['id']}/stage3/history")
+        steps.append(
+            _record_step(
+                step="stage3_history_read",
+                response=stage3_history_resp,
                 expected_status=200,
                 started_at=started,
                 request_body=None,

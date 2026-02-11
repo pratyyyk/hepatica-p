@@ -13,6 +13,7 @@ qualified clinician and validated against local guidelines.
 - Patient create + list + detail + timeline
 - Stage 1: clinical risk triage (rule engine, optional ML artifacts)
 - Stage 2: scan upload + fibrosis inference (local upload mode for demos)
+- Stage 3: multimodal non-invasive monitoring (stiffness + composite risk + alerts + explainability)
 - Knowledge blocks (retrieval + synthesis; local fallback embeddings)
 - Report PDF generation and in-browser viewing
 
@@ -151,6 +152,12 @@ Base prefix: `/api/v1`
   - `POST /scans/upload-url` (returns upload target)
   - `PUT /scans/upload/{scan_asset_id}` (local upload mode)
   - `POST /assessments/fibrosis`
+- Stage 3:
+  - `POST /assessments/stage3`
+  - `POST /patients/{patient_id}/stiffness`
+  - `GET /patients/{patient_id}/stage3/history`
+  - `GET /patients/{patient_id}/alerts`
+  - `GET /patients/{patient_id}/stage3/explainability`
 - Knowledge + Reports:
   - `POST /knowledge/explain`
   - `POST /reports`

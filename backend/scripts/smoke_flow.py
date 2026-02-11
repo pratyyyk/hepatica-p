@@ -20,6 +20,7 @@ os.environ.setdefault("ENABLE_DEV_AUTH", "true")
 os.environ.setdefault("SESSION_ENCRYPTION_KEY", "smoke-session-encryption-key")
 os.environ.setdefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("STAGE3_ENABLED", "true")
 
 from app.core.config import get_settings
 
@@ -95,6 +96,23 @@ def run_smoke() -> None:
         assert_status(stage1_resp, 200, "stage1-clinical")
         print("OK stage1 clinical assessment")
 
+        stiffness_resp = client.post(
+            f"/api/v1/patients/{patient['id']}/stiffness",
+            json={"measured_kpa": 22.8, "cap_dbm": 298, "source": "MEASURED"},
+            headers=headers,
+        )
+        assert_status(stiffness_resp, 200, "stage3-stiffness")
+        stiffness = stiffness_resp.json()
+        print("OK stage3 stiffness measurement")
+
+        stage3_resp = client.post(
+            "/api/v1/assessments/stage3",
+            json={"patient_id": patient["id"], "stiffness_measurement_id": stiffness["id"]},
+            headers=headers,
+        )
+        assert_status(stage3_resp, 200, "stage3-assessment")
+        print("OK stage3 multimodal assessment")
+
         invalid_upload_resp = client.post(
             "/api/v1/scans/upload-url",
             json={
@@ -126,6 +144,12 @@ def run_smoke() -> None:
         timeline_resp = client.get(f"/api/v1/patients/{patient['id']}/timeline")
         assert_status(timeline_resp, 200, "timeline-read")
         print("OK timeline read")
+
+        stage3_history_resp = client.get(f"/api/v1/patients/{patient['id']}/stage3/history")
+        assert_status(stage3_history_resp, 200, "stage3-history")
+        stage3_explain_resp = client.get(f"/api/v1/patients/{patient['id']}/stage3/explainability")
+        assert_status(stage3_explain_resp, 200, "stage3-explainability")
+        print("OK stage3 history + explainability")
 
 
 if __name__ == "__main__":

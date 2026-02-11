@@ -27,17 +27,20 @@ def build_report_payload(
     patient: dict,
     clinical: dict | None,
     fibrosis: dict | None,
+    stage3: dict | None,
     knowledge_blocks: list[dict],
 ) -> dict:
     return {
         "patient": patient,
         "clinical_assessment": clinical,
         "fibrosis_prediction": fibrosis,
+        "stage3_assessment": stage3,
         "knowledge": knowledge_blocks,
         "disclaimer": DISCLAIMER,
         "versioning": {
             "clinical_model": (clinical or {}).get("model_version"),
             "fibrosis_model": (fibrosis or {}).get("model_version"),
+            "stage3_model": (stage3 or {}).get("model_version"),
         },
     }
 
@@ -72,6 +75,7 @@ def render_pdf(report_payload: dict) -> bytes:
     patient = report_payload.get("patient") or {}
     clinical = report_payload.get("clinical_assessment") or None
     fibrosis = report_payload.get("fibrosis_prediction") or None
+    stage3 = report_payload.get("stage3_assessment") or None
     versioning = report_payload.get("versioning") or {}
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -281,6 +285,36 @@ def render_pdf(report_payload: dict) -> bytes:
         story.append(bars)
     else:
         story.append(Paragraph("No Stage 2 prediction was attached to this report.", styles["Small"]))
+
+    # Stage 3.
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("Stage 3 - Multimodal Monitoring", styles["H2"]))
+    if stage3:
+        s3_rows = [
+            ["Risk Tier", _s(stage3.get("risk_tier"))],
+            ["Composite Risk Score", _pct(stage3.get("composite_risk_score"))],
+            ["Progression Risk (12m)", _pct(stage3.get("progression_risk_12m"))],
+            ["Decompensation Risk (12m)", _pct(stage3.get("decomp_risk_12m"))],
+            ["Model", _s(versioning.get("stage3_model") or stage3.get("model_version"))],
+        ]
+        t = Table(s3_rows, colWidths=[45 * mm, 115 * mm])
+        t.setStyle(
+            TableStyle(
+                [
+                    ("FONT", (0, 0), (-1, -1), "Helvetica", 9),
+                    ("FONT", (0, 0), (0, -1), "Helvetica-Bold", 9),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E5E7EB")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        story.append(t)
+    else:
+        story.append(Paragraph("No Stage 3 assessment was attached to this report.", styles["Small"]))
 
     # Knowledge.
     story.append(Spacer(1, 6))

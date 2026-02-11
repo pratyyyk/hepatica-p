@@ -17,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import ConfidenceFlag, EscalationFlag, FibrosisStage, RiskTier
+from app.core.enums import ConfidenceFlag, EscalationFlag, FibrosisStage, RiskTier, Stage3RiskTier
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.db.types import EmbeddingVector
 
@@ -67,6 +67,9 @@ class Patient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     clinical_assessments = relationship("ClinicalAssessment", back_populates="patient")
     scan_assets = relationship("ScanAsset", back_populates="patient")
     fibrosis_predictions = relationship("FibrosisPrediction", back_populates="patient")
+    stiffness_measurements = relationship("StiffnessMeasurement", back_populates="patient")
+    stage3_assessments = relationship("Stage3Assessment", back_populates="patient")
+    risk_alerts = relationship("RiskAlert", back_populates="patient")
     reports = relationship("Report", back_populates="patient")
     timeline_events = relationship("TimelineEvent", back_populates="patient")
 
@@ -135,6 +138,100 @@ class FibrosisPrediction(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     patient = relationship("Patient", back_populates="fibrosis_predictions")
     scan_asset = relationship("ScanAsset", back_populates="predictions")
+    stage3_assessments = relationship("Stage3Assessment", back_populates="fibrosis_prediction")
+
+
+class StiffnessMeasurement(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "stiffness_measurements"
+
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    entered_by: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    measured_kpa: Mapped[float] = mapped_column(Float, nullable=False)
+    cap_dbm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    source: Mapped[str] = mapped_column(String(32), default="MEASURED", nullable=False)
+    measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    patient = relationship("Patient", back_populates="stiffness_measurements")
+    stage3_assessments = relationship("Stage3Assessment", back_populates="stiffness_measurement")
+
+    __table_args__ = (
+        Index("ix_stiffness_measurements_patient_id", "patient_id"),
+        Index("ix_stiffness_measurements_patient_created_at", "patient_id", "created_at"),
+    )
+
+
+class Stage3Assessment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "stage3_assessments"
+
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    clinical_assessment_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("clinical_assessments.id"), nullable=True
+    )
+    fibrosis_prediction_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("fibrosis_predictions.id"), nullable=True
+    )
+    stiffness_measurement_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("stiffness_measurements.id"), nullable=True
+    )
+    performed_by: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    composite_risk_score: Mapped[float] = mapped_column(Float, nullable=False)
+    progression_risk_12m: Mapped[float] = mapped_column(Float, nullable=False)
+    decomp_risk_12m: Mapped[float] = mapped_column(Float, nullable=False)
+    risk_tier: Mapped[str] = mapped_column(String(16), default=Stage3RiskTier.LOW.value, nullable=False)
+    model_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    feature_snapshot_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+
+    patient = relationship("Patient", back_populates="stage3_assessments")
+    fibrosis_prediction = relationship("FibrosisPrediction", back_populates="stage3_assessments")
+    stiffness_measurement = relationship("StiffnessMeasurement", back_populates="stage3_assessments")
+    explanation = relationship("Stage3Explanation", back_populates="assessment", uselist=False)
+    alerts = relationship("RiskAlert", back_populates="assessment")
+
+    __table_args__ = (
+        Index("ix_stage3_assessments_patient_id", "patient_id"),
+        Index("ix_stage3_assessments_patient_created_at", "patient_id", "created_at"),
+    )
+
+
+class RiskAlert(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "risk_alerts"
+
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), nullable=False)
+    stage3_assessment_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("stage3_assessments.id"), nullable=True
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    alert_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="open", nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    patient = relationship("Patient", back_populates="risk_alerts")
+    assessment = relationship("Stage3Assessment", back_populates="alerts")
+
+    __table_args__ = (
+        Index("ix_risk_alerts_patient_id", "patient_id"),
+        Index("ix_risk_alerts_patient_status", "patient_id", "status"),
+        Index("ix_risk_alerts_patient_created_at", "patient_id", "created_at"),
+    )
+
+
+class Stage3Explanation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "stage3_explanations"
+
+    stage3_assessment_id: Mapped[str] = mapped_column(ForeignKey("stage3_assessments.id"), nullable=False)
+    local_feature_contrib_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    global_reference_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    trend_points_json: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
+
+    assessment = relationship("Stage3Assessment", back_populates="explanation")
+
+    __table_args__ = (
+        UniqueConstraint("stage3_assessment_id", name="uq_stage3_explanations_assessment_id"),
+        Index("ix_stage3_explanations_assessment_id", "stage3_assessment_id"),
+    )
 
 
 class KnowledgeChunk(Base, UUIDPrimaryKeyMixin, TimestampMixin):

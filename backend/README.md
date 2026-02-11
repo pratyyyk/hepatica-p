@@ -5,7 +5,7 @@
 The backend is the system-of-record and orchestration layer:
 - owns auth sessions (cookies) + CSRF protection
 - stores patients, assessments, predictions, reports, and timeline events
-- runs Stage 1 and Stage 2 inference pipelines (with safety gates)
+- runs Stage 1, Stage 2, and Stage 3 monitoring pipelines (with safety gates)
 
 Reason: keeping the backend in control of state and security allows a thin frontend and a clear audit trail.
 
@@ -54,6 +54,16 @@ Reason: demos should not fail due to missing AWS credentials while still preserv
 - PDF streaming endpoint: `GET /api/v1/reports/{report_id}/pdf`
 
 Reason: browsers cannot open server-local file paths; the backend endpoint makes the PDF reachable in all modes.
+
+## Stage 3 Monitoring
+
+- Stage 3 assessment endpoint: `POST /api/v1/assessments/stage3`
+- Stiffness input endpoint: `POST /api/v1/patients/{patient_id}/stiffness`
+- Explainability + monitoring endpoints:
+  - `GET /api/v1/patients/{patient_id}/stage3/history`
+  - `GET /api/v1/patients/{patient_id}/alerts`
+  - `GET /api/v1/patients/{patient_id}/stage3/explainability`
+- Scheduled batch runner: `python3 scripts/run_stage3_monitoring.py`
 
 ## Tests
 

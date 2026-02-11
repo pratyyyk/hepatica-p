@@ -27,6 +27,12 @@ DEFAULT_MODELS = [
         "artifact_uri": "file:///app/ml/artifacts/fibrosis_model.pt",
         "metrics": {"type": "ml", "task": "fibrosis_stage"},
     },
+    {
+        "name": "multimodal-stage3-risk",
+        "version": "v1",
+        "artifact_uri": "file:///app/ml/artifacts/stage3",
+        "metrics": {"type": "ml", "task": "multimodal_non_invasive_risk"},
+    },
 ]
 
 

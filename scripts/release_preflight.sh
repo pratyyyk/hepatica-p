@@ -22,6 +22,12 @@ step "Backend smoke flow"
   make smoke
 )
 
+step "Stage 3 monitoring dry-run"
+(
+  cd "${ROOT_DIR}/backend"
+  STAGE3_ENABLED=true "${PYTHON_BIN}" scripts/run_stage3_monitoring.py --dry-run
+)
+
 step "Frontend checks"
 (
   cd "${ROOT_DIR}/frontend"

@@ -56,6 +56,27 @@ Base prefix: `/api/v1`
     - quality gates
     - ML inference (model artifact or dev fallback)
 
+## Stage 3 (Multimodal Monitoring)
+
+- `POST /assessments/stage3`
+  - Body: `{ patient_id, clinical_assessment_id?, fibrosis_prediction_id?, stiffness_measurement_id? }`
+  - Runs non-invasive multimodal scoring and creates in-app alerts when thresholds are crossed.
+
+- `POST /patients/{patient_id}/stiffness`
+  - Body: `{ measured_kpa, cap_dbm?, source, measured_at? }`
+
+- `GET /patients/{patient_id}/stage3/history`
+  - Returns historical Stage 3 assessments for trend monitoring.
+
+- `GET /patients/{patient_id}/alerts`
+  - Returns in-app alert rows (`open`/`ack`/`closed`) for Stage 3 risk monitoring.
+
+- `POST /patients/{patient_id}/alerts/{alert_id}/status`
+  - Body: `{ status: "open" | "ack" | "closed" }`
+
+- `GET /patients/{patient_id}/stage3/explainability`
+  - Returns local feature contributions + longitudinal trend points.
+
 ## Knowledge + Reports
 
 - `POST /knowledge/explain`

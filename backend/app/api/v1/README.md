@@ -11,6 +11,6 @@ Files are grouped by domain:
 - `knowledge.py`: knowledge blocks generation
 - `timeline.py`: timeline read endpoint
 - `models.py`: model registry + artifact health status
+- `stage3.py`: Stage 3 multimodal risk monitoring (stiffness, alerts, explainability)
 
 Reason: versioned routing makes it possible to evolve contracts without breaking existing clients.
-

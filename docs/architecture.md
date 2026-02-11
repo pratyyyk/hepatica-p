@@ -42,10 +42,17 @@ Upload is intentionally split:
 
 Reason: mirrors real systems (presigned uploads) while still supporting a purely local upload for demos.
 
+### Stage 3 (Multimodal risk monitoring)
+
+- `POST /api/v1/assessments/stage3` computes a composite non-invasive risk score from Stage 1 + Stage 2 + liver stiffness.
+- Liver stiffness can come from measured elastography (`POST /api/v1/patients/{patient_id}/stiffness`) or proxy estimation.
+- Alerts are persisted in `risk_alerts` and surfaced in timeline + Stage 3 dashboards.
+
+Reason: this gives longitudinal risk tracking and explainable alerting without changing Stage 1/2 contracts.
+
 ### Reports
 
 - `POST /api/v1/reports` builds a JSON payload, renders a PDF, stores it (S3 or local), and returns a URL.
 - `GET /api/v1/reports/{id}/pdf` streams the PDF via backend so the browser always has a reachable URL.
 
 Reason: in local mode, a file path like `/tmp/...pdf` is not browser-accessible; a backend endpoint is.
-

@@ -37,9 +37,18 @@ class Stage2ModelStatus(BaseModel):
     ready_for_release: bool
 
 
+class Stage3ModelStatus(BaseModel):
+    enabled: bool
+    require_non_dev: bool
+    registry: ModelRegistryStatus
+    artifact_health: ArtifactHealthStatus
+    ready_for_release: bool
+
+
 class ModelStatusResponse(BaseModel):
     generated_at: datetime
     stage1: Stage1ModelStatus
     stage2: Stage2ModelStatus
+    stage3: Stage3ModelStatus
     severity: str
     ready_for_release: bool

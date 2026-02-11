@@ -19,6 +19,7 @@ Reason: the UI is intentionally BFF-backed; it never stores access tokens and re
 - `/patients/[id]`: details + timeline
 - `/assessments/stage1`: run Stage 1
 - `/assessments/stage2`: upload scan, run Stage 2, generate knowledge/report
+- `/assessments/stage3`: multimodal monitoring, alerts, and explainability
 - `/reports`: generate report for a patient
 
 ## Environment
@@ -41,4 +42,3 @@ npm ci
 cp .env.local.example .env.local
 npm run dev
 ```
-

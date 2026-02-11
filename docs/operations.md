@@ -17,8 +17,29 @@ make preflight
 What it runs and why:
 - backend tests: regression safety
 - backend smoke: ensures the happy-path API flow works
+- stage3 monitoring dry-run: validates scheduled monitoring pipeline + alert dedupe path
 - frontend lint/audit/build: correctness + supply chain checks
 - infra validation: keeps Terraform from silently rotting
+
+## Stage 3 Scheduled Monitoring
+
+Stage 3 monitoring is scheduled-only.
+
+Manual run:
+
+```bash
+cd backend
+STAGE3_ENABLED=true python3 scripts/run_stage3_monitoring.py
+```
+
+Dry-run:
+
+```bash
+cd backend
+STAGE3_ENABLED=true python3 scripts/run_stage3_monitoring.py --dry-run
+```
+
+Recommended cadence: every 10 weeks.
 
 ## Staging (Optional)
 

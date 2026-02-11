@@ -44,6 +44,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <NavLink href="/patients" label="Patients" />
           <NavLink href="/assessments/stage1" label="Stage 1 Assessment" />
           <NavLink href="/assessments/stage2" label="Stage 2 Scan" />
+          <NavLink href="/assessments/stage3" label="Stage 3 Monitoring" />
           <NavLink href="/reports" label="Reports" />
         </nav>
 
@@ -66,7 +67,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <div className="main">
         <header className="topbar">
           <div className="topbarLeft">
-            <div className="topbarTitle">Clinical triage + fibrosis staging</div>
+            <div className="topbarTitle">Clinical triage + fibrosis staging + Stage 3 monitoring</div>
             <div className="topbarSub">Local-ready prototype</div>
           </div>
           <div className="topbarRight">
@@ -79,4 +80,3 @@ export default function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-

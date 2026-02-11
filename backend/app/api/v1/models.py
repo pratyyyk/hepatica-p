@@ -16,6 +16,7 @@ from app.schemas.model_status import (
     ModelStatusResponse,
     Stage1ModelStatus,
     Stage2ModelStatus,
+    Stage3ModelStatus,
 )
 from app.services.fibrosis_inference import inspect_stage2_artifact_contract
 from app.services.model_registry import get_active_model, resolve_local_artifact_path
@@ -133,11 +134,51 @@ def get_model_status(
         ready_for_release=stage2_artifact_health.ready_for_release,
     )
 
-    overall_ready = stage1_status.ready_for_release and stage2_status.ready_for_release
+    active_stage3 = get_active_model(db, cfg.stage3_registry_model_name)
+    stage3_path = resolve_local_artifact_path(active_stage3, cfg.stage3_model_artifact_dir)
+    stage3_errors: list[str] = []
+    if cfg.stage3_enabled:
+        if active_stage3 is None:
+            stage3_errors.append(
+                f"no active model_registry row for {cfg.stage3_registry_model_name}"
+            )
+        required_stage3_files = [
+            stage3_path / "stage3_risk_model.joblib",
+            stage3_path / "stage3_thresholds.json",
+            stage3_path / "stage3_run_metadata.json",
+        ]
+        for path in required_stage3_files:
+            if not path.exists():
+                stage3_errors.append(f"missing Stage 3 artifact: {path}")
+    stage3_strict_mode = (
+        cfg.stage3_enabled and not cfg.is_local_dev and cfg.stage3_require_model_non_dev
+    )
+    stage3_artifact_health = _build_artifact_health(
+        strict_mode=stage3_strict_mode,
+        errors=stage3_errors,
+    )
+    stage3_registry = ModelRegistryStatus(
+        requested_name=cfg.stage3_registry_model_name,
+        active_name=active_stage3.name if active_stage3 else None,
+        active_version=active_stage3.version if active_stage3 else None,
+        artifact_uri=active_stage3.artifact_uri if active_stage3 else None,
+        resolved_artifact_path=str(stage3_path),
+        active=active_stage3 is not None,
+    )
+    stage3_status = Stage3ModelStatus(
+        enabled=cfg.stage3_enabled,
+        require_non_dev=cfg.stage3_require_model_non_dev,
+        registry=stage3_registry,
+        artifact_health=stage3_artifact_health,
+        ready_for_release=(not cfg.stage3_enabled) or stage3_artifact_health.ready_for_release,
+    )
+
+    overall_ready = stage1_status.ready_for_release and stage2_status.ready_for_release and stage3_status.ready_for_release
     overall_severity = _aggregate_severity(
         [
             stage1_status.artifact_health.severity,
             stage2_status.artifact_health.severity,
+            stage3_status.artifact_health.severity,
         ]
     )
 
@@ -145,6 +186,7 @@ def get_model_status(
         generated_at=datetime.now(timezone.utc),
         stage1=stage1_status,
         stage2=stage2_status,
+        stage3=stage3_status,
         severity=overall_severity,
         ready_for_release=overall_ready,
     )

@@ -9,6 +9,7 @@ class ReportCreate(BaseModel):
     patient_id: str
     clinical_assessment_id: str | None = None
     fibrosis_prediction_id: str | None = None
+    stage3_assessment_id: str | None = None
 
 
 class ReportRead(BaseModel):

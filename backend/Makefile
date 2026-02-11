@@ -1,4 +1,4 @@
-.PHONY: install run test lint init-db ingest-journals smoke smoke-evidence
+.PHONY: install run test lint init-db ingest-journals smoke smoke-evidence stage3-monitor
 
 install:
 	python3 -m pip install -r requirements.txt
@@ -23,3 +23,6 @@ smoke:
 
 smoke-evidence:
 	python3 scripts/smoke_evidence.py
+
+stage3-monitor:
+	python3 scripts/run_stage3_monitoring.py

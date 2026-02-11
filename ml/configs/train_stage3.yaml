@@ -1,0 +1,17 @@
+model_name: multimodal-stage3-risk
+schema_version: stage3_synth_v1
+seed: 42
+
+data_path: /Users/praty/hepatica-p/data/synthetic/stage3_synth_v1.parquet
+artifact_dir: /Users/praty/hepatica-p/ml/artifacts/stage3
+
+gates:
+  ppv_target: 0.85
+  recall_floor: 0.65
+
+model:
+  learning_rate: 0.05
+  max_iter: 350
+  max_depth: 4
+  min_samples_leaf: 100
+  l2_regularization: 0.1
