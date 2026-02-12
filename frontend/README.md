@@ -1,44 +1,29 @@
-# Frontend (Next.js Doctor Console)
+# frontend Folder Guide
 
 ## Purpose
+Next.js frontend for login, patient workflows, assessments, monitoring, and reporting.
 
-Interactive doctor dashboard for:
-- login (demo doctors)
-- patient management + timeline
-- Stage 1 assessment
-- Stage 2 scan upload + inference
-- knowledge generation
-- report generation + PDF viewing
+## Subfolders
+| Folder | Role |
+|---|---|
+| `app` | App Router structure, global layout, and cross-page providers/styles. |
+| `components` | Reusable UI components and shell/navigation primitives. |
+| `lib` | Frontend API client, session state, and active patient helpers. |
 
-Reason: the UI is intentionally BFF-backed; it never stores access tokens and relies on backend cookies + CSRF.
+## Files
+| File | What it does |
+|---|---|
+| `.env.local.example` | Frontend env template for API/auth settings. |
+| `.eslintignore` | ESLint exclusion list. |
+| `.eslintrc.json` | ESLint rules for frontend TypeScript/React. |
+| `next-env.d.ts` | Next.js ambient type declarations. |
+| `next.config.mjs` | Next.js runtime configuration. |
+| `package-lock.json` | Locked npm dependency graph for reproducible installs. |
+| `package.json` | Frontend scripts and dependency manifest. |
+| `tsconfig.json` | TypeScript compiler options. |
 
-## Routes (App Router)
-
-- `/login`: demo doctor sign-in
-- `/patients`: list + create, set active patient
-- `/patients/[id]`: details + timeline
-- `/assessments/stage1`: run Stage 1
-- `/assessments/stage2`: upload scan, run Stage 2, generate knowledge/report
-- `/assessments/stage3`: multimodal monitoring, alerts, and explainability
-- `/reports`: generate report for a patient
-
-## Environment
-
-`frontend/.env.local`:
-- `NEXT_PUBLIC_API_BASE` (default `http://localhost:8000`)
-- `NEXT_PUBLIC_ENABLE_DEV_AUTH=true` (for demo login UI)
-
-## Upload Behavior (Why it works locally)
-
-Stage 2 uploads use the `upload_url` returned by the backend:
-- If it points to the backend (local mode), the frontend includes cookies + CSRF header.
-- If it is a presigned S3 URL, the frontend uploads without cookies and without CSRF.
-
-## Run
-
-```bash
-cd frontend
-npm ci
-cp .env.local.example .env.local
-npm run dev
-```
+## Quick Commands
+- `npm ci`
+- `npm run dev`
+- `npm run lint`
+- `npm run build`

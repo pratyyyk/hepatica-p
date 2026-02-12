@@ -1,11 +1,14 @@
-# backend/app/db
+# backend/app/db Folder Guide
 
-Database layer (SQLAlchemy).
+## Purpose
+ORM models, DB session wiring, and database initialization.
 
-Key files:
-- `models.py`: ORM models for patients, assessments, scans, predictions, knowledge, reports, timeline, audit logs.
-- `session.py`: engine/session creation (SQLite by default; Postgres optional).
-- `init_db.py`: seeds default model registry rows for convenience.
-
-Reason: the prototype uses a relational model because it matches "patient-centric" workflows and is easy to reason about.
-
+## Files
+| File | What it does |
+|---|---|
+| `__init__.py` | Package marker and module export surface. |
+| `base.py` | Python module implementing domain-specific logic for this folder. |
+| `init_db.py` | Python module implementing domain-specific logic for this folder. |
+| `models.py` | Model registry/status or model lifecycle helper. |
+| `session.py` | Python module implementing domain-specific logic for this folder. |
+| `types.py` | Python module implementing domain-specific logic for this folder. |

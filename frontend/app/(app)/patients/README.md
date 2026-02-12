@@ -1,11 +1,14 @@
-# frontend/app/(app)/patients
+# frontend/app/(app)/patients Folder Guide
 
-Patient management.
+## Purpose
+Patient list/create/delete and active patient controls.
 
-Routes:
-- `/patients`: list + create + set active patient (stored in localStorage).
-- `/patients/[id]`: patient details + timeline viewer.
+## Subfolders
+| Folder | Role |
+|---|---|
+| `[id]` | Patient detail timeline with integrated Stage 3 history + alerts. |
 
-Why "active patient":
-- It reduces repetitive copy/paste across the workflow (assessments, reports).
-
+## Files
+| File | What it does |
+|---|---|
+| `page.tsx` | Next.js route page component for this folder path. |

@@ -1,12 +1,18 @@
-# frontend/app
+# frontend/app Folder Guide
 
-Next.js App Router pages and layouts.
+## Purpose
+App Router structure, global layout, and cross-page providers/styles.
 
-Folders:
-- `(auth)/`: authentication screens (login)
-- `(app)/`: authenticated application shell (sidebar + pages)
-- `layout.tsx`: root layout (wraps the app with providers)
-- `providers.tsx`: client providers (session context)
+## Subfolders
+| Folder | Role |
+|---|---|
+| `(app)` | Authenticated clinician workspace shell and routed pages. |
+| `(auth)` | Authentication route group. |
 
-Reason: route groups keep the login experience separate from the authenticated shell, which simplifies guard logic.
-
+## Files
+| File | What it does |
+|---|---|
+| `globals.css` | Global/style definitions for frontend visual system. |
+| `layout.tsx` | Next.js layout wrapper for nested routes. |
+| `page.tsx` | Next.js route page component for this folder path. |
+| `providers.tsx` | React context/provider composition for app-wide state. |

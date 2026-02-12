@@ -1,7 +1,7 @@
-# frontend/app/(app)/reports Folder Guide
+# frontend/app/(app)/assessments/stage3 Folder Guide
 
 ## Purpose
-Report generation and PDF retrieval page.
+Stage 3 stiffness, multimodal risk, alerts, and explainability UI.
 
 ## Files
 | File | What it does |

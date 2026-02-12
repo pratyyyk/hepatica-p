@@ -98,8 +98,8 @@ export default function Stage2Page() {
   }
 
   useEffect(() => {
-    if (activePatientId && !patientId) setPatientId(activePatientId);
-  }, [activePatientId, patientId]);
+    if (activePatientId) setPatientId(activePatientId);
+  }, [activePatientId]);
 
   const topStage = useMemo(() => fibrosis?.top1?.stage, [fibrosis]);
   const outputQualityCodes = useMemo(() => extractQualityCodes(fibrosis?.quality_metrics), [fibrosis?.quality_metrics]);

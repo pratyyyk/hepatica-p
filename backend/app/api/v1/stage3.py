@@ -35,7 +35,10 @@ settings = get_settings()
 
 def _require_stage3_enabled(cfg: Settings) -> None:
     if not cfg.stage3_enabled:
-        raise HTTPException(status_code=404, detail="Stage 3 is disabled")
+        raise HTTPException(
+            status_code=404,
+            detail="Stage 3 is disabled. Set STAGE3_ENABLED=true in backend/.env and restart backend.",
+        )
 
 
 @router.post("/assessments/stage3", response_model=Stage3AssessmentRead)

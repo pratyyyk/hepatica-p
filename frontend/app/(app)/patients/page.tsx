@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { Card, CardHeader, Button, Field, Input, Select, Textarea, Pill } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
-import { setActivePatientId, useActivePatientId } from "@/lib/activePatient";
+import { useActivePatientId } from "@/lib/activePatient";
 import { useSession } from "@/lib/session";
 
 type Patient = {
@@ -21,12 +21,13 @@ type Patient = {
 
 export default function PatientsPage() {
   const { csrfToken, csrfHeaderName } = useSession();
-  const { activePatientId } = useActivePatientId();
+  const { activePatientId, setActivePatientId } = useActivePatientId();
 
   const [rows, setRows] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [deletingPatientId, setDeletingPatientId] = useState("");
 
   const [form, setForm] = useState({
     external_id: "",
@@ -74,6 +75,32 @@ export default function PatientsPage() {
     }
   }
 
+  async function deletePatient(row: Patient) {
+    const confirmed = window.confirm(
+      `Remove patient ${row.external_id}? This will permanently delete linked assessments and reports.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingPatientId(row.id);
+    setStatus(`Removing ${row.external_id}...`);
+    setError("");
+    try {
+      await apiFetch(`/api/v1/patients/${row.id}`, {
+        method: "DELETE",
+        csrfToken,
+        csrfHeaderName,
+      });
+      if (activePatientId === row.id) setActivePatientId("");
+      setStatus(`Removed ${row.external_id}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+      setStatus("");
+    } finally {
+      setDeletingPatientId("");
+    }
+  }
+
   return (
     <div className="grid2">
       <Card className="fadeIn">
@@ -104,14 +131,24 @@ export default function PatientsPage() {
                     {p.type2dm ? <Pill tone="warn">T2DM</Pill> : <Pill tone="neutral">No T2DM</Pill>}
                   </div>
                 </div>
-                <Button
-                  tone="secondary"
-                  onClick={() => {
-                    setActivePatientId(p.id);
-                  }}
-                >
-                  Set Active
-                </Button>
+                <div className="row">
+                  <Button
+                    tone="secondary"
+                    onClick={() => {
+                      setActivePatientId(p.id);
+                    }}
+                    disabled={deletingPatientId === p.id}
+                  >
+                    Set Active
+                  </Button>
+                  <Button
+                    tone="danger"
+                    onClick={() => void deletePatient(p)}
+                    disabled={deletingPatientId === p.id}
+                  >
+                    {deletingPatientId === p.id ? "Removing..." : "Remove"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -190,4 +227,3 @@ export default function PatientsPage() {
     </div>
   );
 }
-

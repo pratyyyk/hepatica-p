@@ -1,21 +1,14 @@
-# backend/alembic
+# backend/alembic Folder Guide
 
-Alembic migrations for the backend database schema.
+## Purpose
+Database migration framework setup for SQLAlchemy models.
 
-Key files:
-- `alembic.ini`: migration configuration (DB URL is supplied via environment).
-- `env.py`: Alembic runtime (imports SQLAlchemy metadata).
-- `versions/`: generated migration scripts.
+## Subfolders
+| Folder | Role |
+|---|---|
+| `versions` | Versioned schema migrations applied in order. |
 
-Why migrations exist in a prototype:
-- Keeping schema changes explicit prevents "works on my machine" drift.
-- It enables staging/production-like workflows even while iterating quickly.
-
-Common commands:
-
-```bash
-cd backend
-alembic upgrade head
-alembic revision --autogenerate -m "describe change"
-```
-
+## Files
+| File | What it does |
+|---|---|
+| `env.py` | Python module implementing domain-specific logic for this folder. |

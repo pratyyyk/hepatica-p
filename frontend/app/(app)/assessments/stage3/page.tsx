@@ -69,11 +69,26 @@ function pct(v: number) {
   return `${(v * 100).toFixed(1)}%`;
 }
 
-function toneFromTier(tier: Stage3Assessment["risk_tier"] | undefined): "neutral" | "ok" | "warn" | "danger" {
-  if (tier === "CRITICAL") return "danger";
-  if (tier === "HIGH") return "warn";
-  if (tier === "MODERATE") return "neutral";
-  return "ok";
+function tierClass(tier: Stage3Assessment["risk_tier"] | undefined): string {
+  if (tier === "CRITICAL") return "tierCritical";
+  if (tier === "HIGH") return "tierHigh";
+  if (tier === "MODERATE") return "tierModerate";
+  return "tierLow";
+}
+
+function alertStatusClass(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "open") return "alertOpen";
+  if (normalized === "ack") return "alertAck";
+  if (normalized === "closed") return "alertClosed";
+  return "";
+}
+
+function normalizeStage3Error(message: string): string {
+  if (message.toLowerCase().includes("stage 3 is disabled")) {
+    return "Stage 3 is disabled on backend. Set STAGE3_ENABLED=true in backend/.env, then restart backend.";
+  }
+  return message;
 }
 
 export default function Stage3Page() {
@@ -93,8 +108,8 @@ export default function Stage3Page() {
   const [status, setStatus] = useState("");
 
   useEffect(() => {
-    if (activePatientId && !patientId) setPatientId(activePatientId);
-  }, [activePatientId, patientId]);
+    if (activePatientId) setPatientId(activePatientId);
+  }, [activePatientId]);
 
   const positiveContribs = useMemo(() => explain?.local_feature_contrib_json.positive || [], [explain]);
   const negativeContribs = useMemo(() => explain?.local_feature_contrib_json.negative || [], [explain]);
@@ -130,7 +145,9 @@ export default function Stage3Page() {
       setStiffness(out);
       setStatus("Stiffness saved");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save stiffness");
+      setError(
+        err instanceof Error ? normalizeStage3Error(err.message) : "Failed to save stiffness",
+      );
       setStatus("");
     } finally {
       setBusy(false);
@@ -156,7 +173,7 @@ export default function Stage3Page() {
       await refreshExtras(patientId, out.id);
       setStatus("Stage 3 complete");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Stage 3 failed");
+      setError(err instanceof Error ? normalizeStage3Error(err.message) : "Stage 3 failed");
       setStatus("");
     } finally {
       setBusy(false);
@@ -164,7 +181,7 @@ export default function Stage3Page() {
   }
 
   return (
-    <div className="grid2">
+    <div className="grid2 stage3Grid">
       <Card className="fadeIn">
         <CardHeader title="Stage 3 Monitoring" subtitle="Non-invasive multimodal risk with stiffness and tracking." />
         <form className="stack" onSubmit={saveStiffness}>
@@ -205,15 +222,30 @@ export default function Stage3Page() {
       <Card className="fadeIn" style={{ animationDelay: "80ms" }}>
         <CardHeader title="Risk Output" subtitle="Composite + progression/decompensation risk." />
         {assessment ? (
-          <div className="stack">
-            <div className="row">
-              <Pill tone={toneFromTier(assessment.risk_tier)}>{assessment.risk_tier}</Pill>
-              <Pill tone="neutral">Composite {pct(assessment.composite_risk_score)}</Pill>
-              <Pill tone="neutral">Progression {pct(assessment.progression_risk_12m)}</Pill>
-              <Pill tone="neutral">Decomp {pct(assessment.decomp_risk_12m)}</Pill>
+          <div className="stack stage3Panel">
+            <div className={`riskTierPanel ${tierClass(assessment.risk_tier)}`}>
+              <div className="riskTierLabel">Current Risk Tier</div>
+              <div className="riskTierValue">{assessment.risk_tier}</div>
+              <div className="riskTierModel">Model: {assessment.model_version}</div>
             </div>
-            <div className="muted">Model: {assessment.model_version}</div>
-            <pre className="json">{JSON.stringify(assessment.feature_snapshot_json, null, 2)}</pre>
+            <div className="riskMetricGrid">
+              <div className="riskMetric">
+                <div className="riskMetricLabel">Composite Risk</div>
+                <div className="riskMetricValue">{pct(assessment.composite_risk_score)}</div>
+              </div>
+              <div className="riskMetric">
+                <div className="riskMetricLabel">12m Progression</div>
+                <div className="riskMetricValue">{pct(assessment.progression_risk_12m)}</div>
+              </div>
+              <div className="riskMetric">
+                <div className="riskMetricLabel">12m Decompensation</div>
+                <div className="riskMetricValue">{pct(assessment.decomp_risk_12m)}</div>
+              </div>
+            </div>
+            <details className="jsonDetails">
+              <summary>Feature Snapshot (raw factors)</summary>
+              <pre className="json">{JSON.stringify(assessment.feature_snapshot_json, null, 2)}</pre>
+            </details>
           </div>
         ) : (
           <div className="empty">Run Stage 3 to view the monitoring output.</div>
@@ -235,7 +267,7 @@ export default function Stage3Page() {
                 <span>{a.alert_type}</span>
                 <span>{a.severity}</span>
                 <span>{a.score.toFixed(3)} / {a.threshold.toFixed(3)}</span>
-                <span>{a.status}</span>
+                <span className={`alertStatus ${alertStatusClass(a.status)}`}>{a.status}</span>
               </div>
             ))}
           </div>
@@ -252,8 +284,8 @@ export default function Stage3Page() {
               <div>
                 <div className="xaiTitle">Top Positive Drivers</div>
                 {positiveContribs.map((item) => (
-                  <div key={item.feature} className="contribRow">
-                    <span>{item.feature}</span>
+                <div key={item.feature} className="contribRow">
+                    <span>{item.feature.replaceAll("_", " ")}</span>
                     <div className="contribBar"><span style={{ width: `${Math.min(100, Math.abs(item.contribution) * 500)}%` }} /></div>
                     <span>{item.contribution.toFixed(3)}</span>
                   </div>
@@ -262,8 +294,8 @@ export default function Stage3Page() {
               <div>
                 <div className="xaiTitle">Top Negative Drivers</div>
                 {negativeContribs.map((item) => (
-                  <div key={item.feature} className="contribRow">
-                    <span>{item.feature}</span>
+                <div key={item.feature} className="contribRow">
+                    <span>{item.feature.replaceAll("_", " ")}</span>
                     <div className="contribBar danger"><span style={{ width: `${Math.min(100, Math.abs(item.contribution) * 500)}%` }} /></div>
                     <span>{item.contribution.toFixed(3)}</span>
                   </div>

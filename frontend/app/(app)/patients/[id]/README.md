@@ -1,7 +1,7 @@
-# frontend/app/(app)/reports Folder Guide
+# frontend/app/(app)/patients/[id] Folder Guide
 
 ## Purpose
-Report generation and PDF retrieval page.
+Patient detail timeline with integrated Stage 3 history + alerts.
 
 ## Files
 | File | What it does |

@@ -1,19 +1,13 @@
-# data
+# data Folder Guide
 
-Local datasets used for demos and training.
+## Purpose
+Local datasets used by demo flows and ML pipelines.
 
-## Images
+## Subfolders
+| Folder | Role |
+|---|---|
+| `Images` | Image datasets grouped by fibrosis class labels F0-F4. |
+| `synthetic` | Synthetic dataset schemas/profiles used by Stage 1/Stage 3 training and validation. |
 
-`data/Images/` is expected to have subfolders by fibrosis stage:
-- `F0/`, `F1/`, `F2/`, `F3/`, `F4/`
-
-Why: the Stage 2 pipeline uses an ImageFolder-style layout, and the backend can look up local images by filename.
-
-## Synthetic (Stage 1)
-
-`data/synthetic/` contains synthetic tabular artifacts for Stage 1 experimentation:
-- parquet dataset + splits
-- schema and profile json
-
-Why: enables deterministic training and evaluation without PHI.
-
+## Files
+This folder has no direct code/config files; see subfolder READMEs for details.

@@ -44,6 +44,14 @@ type Stage3AlertsResponse = {
   }[];
 };
 
+function alertStatusClass(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "open") return "alertOpen";
+  if (normalized === "ack") return "alertAck";
+  if (normalized === "closed") return "alertClosed";
+  return "";
+}
+
 export default function PatientDetailPage() {
   const params = useParams<{ id: string }>();
   const patientId = params.id;
@@ -92,22 +100,36 @@ export default function PatientDetailPage() {
   }, [refresh]);
 
   return (
-    <div className="grid2">
+    <div className="grid2 patientDetailGrid">
       <Card className="fadeIn">
-        <CardHeader title="Patient" subtitle="Details + identifiers." />
+        <CardHeader title="Patient Overview" subtitle="Clinical identity and baseline profile." />
         {loading ? (
           <div className="empty">Loading...</div>
         ) : error ? (
           <div className="status status-danger">{error}</div>
         ) : patient ? (
           <div className="stack">
-            <div className="row">
+            <div className="patientIdBand">
               <Pill tone="ok">{patient.external_id}</Pill>
               <Pill tone="neutral">{patient.id}</Pill>
-              {patient.sex ? <Pill tone="neutral">{patient.sex}</Pill> : null}
-              {typeof patient.age === "number" ? <Pill tone="neutral">Age {patient.age}</Pill> : null}
-              {typeof patient.bmi === "number" ? <Pill tone="neutral">BMI {patient.bmi}</Pill> : null}
-              {patient.type2dm ? <Pill tone="warn">T2DM</Pill> : <Pill tone="neutral">No T2DM</Pill>}
+            </div>
+            <div className="patientSummaryGrid">
+              <div className="summaryCell">
+                <span>Sex</span>
+                <strong>{patient.sex || "Unknown"}</strong>
+              </div>
+              <div className="summaryCell">
+                <span>Age</span>
+                <strong>{typeof patient.age === "number" ? patient.age : "N/A"}</strong>
+              </div>
+              <div className="summaryCell">
+                <span>BMI</span>
+                <strong>{typeof patient.bmi === "number" ? patient.bmi : "N/A"}</strong>
+              </div>
+              <div className="summaryCell">
+                <span>T2DM</span>
+                <strong>{patient.type2dm ? "Present" : "Absent"}</strong>
+              </div>
             </div>
             {patient.notes ? <div className="note">{patient.notes}</div> : <div className="muted">No notes.</div>}
             <div className="row">
@@ -143,7 +165,7 @@ export default function PatientDetailPage() {
             {stage3History.length ? (
               <div className="list">
                 {stage3History.slice(0, 4).map((s3) => (
-                  <div key={s3.id} className="listRow">
+                  <div key={s3.id} className="listRow stage3HistoryTile">
                     <div className="listMain">
                       <div className="listTitle">{s3.risk_tier}</div>
                       <div className="listMeta">
@@ -173,7 +195,7 @@ export default function PatientDetailPage() {
                     <span>{a.alert_type}</span>
                     <span>{a.severity}</span>
                     <span>{a.score.toFixed(3)} / {a.threshold.toFixed(3)}</span>
-                    <span>{a.status}</span>
+                    <span className={`alertStatus ${alertStatusClass(a.status)}`}>{a.status}</span>
                   </div>
                 ))}
               </div>

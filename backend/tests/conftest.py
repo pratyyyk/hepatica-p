@@ -13,6 +13,7 @@ os.environ["ENABLE_DEV_AUTH"] = "true"
 os.environ["SESSION_ENCRYPTION_KEY"] = "test-session-encryption-key"
 os.environ["CORS_ALLOWED_ORIGINS"] = "http://localhost:3000"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+os.environ["STAGE3_ENABLED"] = "false"
 
 from app.core.config import get_settings
 get_settings.cache_clear()

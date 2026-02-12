@@ -1,10 +1,10 @@
-# backend/app/utils
+# backend/app/utils Folder Guide
 
-Reserved for small shared helpers that do not naturally belong in `services/` or `core/`.
+## Purpose
+Utility namespace reserved for shared helper modules.
 
-Why this is separate:
-- Avoids turning `services/` into a dumping ground.
-- Keeps domain logic and cross-cutting policy separate.
+## Files
+This folder currently has no direct code files.
 
-This folder is intentionally light in the prototype; add utilities only when they are reused in multiple places.
-
+## Notes
+Add only cross-cutting helpers that are reused in multiple domains and do not fit `services/` or `core/`.

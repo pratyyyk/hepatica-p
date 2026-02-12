@@ -1,6 +1,9 @@
-# infra/scripts
+# infra/scripts Folder Guide
 
-Infrastructure validation and helper scripts.
+## Purpose
+Shell helpers for infrastructure validation.
 
-Reason: keep Terraform commands consistent and fail fast on missing tools/version mismatches.
-
+## Files
+| File | What it does |
+|---|---|
+| `validate.sh` | Terraform fmt/init/validate wrapper. |

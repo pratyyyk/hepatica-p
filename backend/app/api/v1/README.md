@@ -1,16 +1,20 @@
-# backend/app/api/v1
+# backend/app/api/v1 Folder Guide
 
-Versioned API routers.
+## Purpose
+Versioned REST endpoints for auth, assessments, scans, reports, and Stage 3.
 
-Files are grouped by domain:
-- `auth.py`: login/session/logout
-- `patients.py`: patient CRUD + list
-- `assessments.py`: Stage 1 + Stage 2 orchestration
-- `scans.py`: upload tickets + local upload endpoint
-- `reports.py`: report generation + PDF streaming endpoint
-- `knowledge.py`: knowledge blocks generation
-- `timeline.py`: timeline read endpoint
-- `models.py`: model registry + artifact health status
-- `stage3.py`: Stage 3 multimodal risk monitoring (stiffness, alerts, explainability)
-
-Reason: versioned routing makes it possible to evolve contracts without breaking existing clients.
+## Files
+| File | What it does |
+|---|---|
+| `__init__.py` | Package marker and module export surface. |
+| `api.py` | Python module implementing domain-specific logic for this folder. |
+| `assessments.py` | Python module implementing domain-specific logic for this folder. |
+| `assistant.py` | Doctor assistant chatbot API for patient-aware Q&A. |
+| `auth.py` | Authentication/session handling logic. |
+| `knowledge.py` | Knowledge retrieval, chunking, and explainability support. |
+| `models.py` | Model registry/status or model lifecycle helper. |
+| `patients.py` | Patient data API/schema test or helper logic. |
+| `reports.py` | Report payload assembly or PDF/report endpoint logic. |
+| `scans.py` | Scan upload or file handling endpoint/service logic. |
+| `stage3.py` | Stage 3 multimodal scoring, API schema, or support logic. |
+| `timeline.py` | Timeline persistence or rendering contract logic. |

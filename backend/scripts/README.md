@@ -1,12 +1,17 @@
-# backend/scripts
+# backend/scripts Folder Guide
 
-Helper scripts for local workflows.
+## Purpose
+Operational scripts for API export, synthetic data, smoke runs, and Stage 3 monitoring.
 
-Common:
-- `smoke_flow.py`: executes an end-to-end API flow using TestClient.
-- `smoke_evidence.py`: produces smoke evidence artifacts.
-- `generate_synthetic_clinical_dataset.py`: generates synthetic Stage 1 data artifacts.
-- `export_openapi.py`: exports OpenAPI JSON to `docs/openapi.generated.json` (ignored by git).
-
-Reason: scripts keep one-off operational tasks out of the request path and make repeatable workflows easy.
-
+## Files
+| File | What it does |
+|---|---|
+| `__init__.py` | Package marker and module export surface. |
+| `export_openapi.py` | Python module implementing domain-specific logic for this folder. |
+| `generate_synthetic_clinical_dataset.py` | Synthetic dataset generator script. |
+| `ingest_journals.py` | Python module implementing domain-specific logic for this folder. |
+| `model_registry.py` | Model registry/status or model lifecycle helper. |
+| `run_stage3_monitoring.py` | Stage 3 scheduled monitoring logic and alerting workflow. |
+| `smoke_evidence.py` | Python module implementing domain-specific logic for this folder. |
+| `smoke_flow.py` | Python module implementing domain-specific logic for this folder. |
+| `start.sh` | Entrypoint: migrate DB then start uvicorn. |

@@ -1,7 +1,7 @@
-# frontend/app/(app)/reports Folder Guide
+# frontend/app/(auth)/login Folder Guide
 
 ## Purpose
-Report generation and PDF retrieval page.
+Clinician login experience (demo + provider auth modes).
 
 ## Files
 | File | What it does |

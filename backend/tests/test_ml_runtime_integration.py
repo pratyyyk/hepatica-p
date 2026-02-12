@@ -4,11 +4,12 @@ from io import BytesIO
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image
 
 from app.core.config import Settings
-from app.core.enums import RiskTier
+from app.core.enums import FibrosisStage, RiskTier
 from app.services.fibrosis_inference import (
     FibrosisModelRuntime,
     Stage2ArtifactContractError,
@@ -19,6 +20,17 @@ from app.services.stage1_ml_inference import predict_stage1_ml
 
 def _sample_image_bytes() -> bytes:
     image = Image.new("RGB", (32, 32), color=(128, 96, 72))
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _noisy_image_bytes(seed: int = 7) -> bytes:
+    rng = np.random.default_rng(seed)
+    pixels = np.clip(140.0 + rng.normal(0.0, 60.0, size=(32, 32, 3)), 0.0, 255.0).astype(
+        np.uint8
+    )
+    image = Image.fromarray(pixels)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -86,6 +98,43 @@ def test_fibrosis_runtime_uses_fallback_in_local_dev(tmp_path: Path):
 
     assert result.top1[0].value in {"F0", "F1", "F2", "F3", "F4"}
     assert result.model_version
+
+
+def test_fibrosis_fallback_avoids_mid_stage_probability_collapse(tmp_path: Path):
+    settings = Settings(
+        environment="development",
+        stage2_require_model_non_dev=True,
+        model_artifact_path=tmp_path / "missing-model.pt",
+        temperature_artifact_path=tmp_path / "missing-temperature.json",
+        local_image_root=tmp_path,
+    )
+    runtime = FibrosisModelRuntime(settings=settings)
+
+    smooth = runtime.predict(_sample_image_bytes())
+    textured = runtime.predict(_noisy_image_bytes())
+
+    smooth_mid_high = [smooth.softmax_vector[s] for s in (FibrosisStage.F2, FibrosisStage.F3, FibrosisStage.F4)]
+    textured_mid_high = [
+        textured.softmax_vector[s]
+        for s in (FibrosisStage.F2, FibrosisStage.F3, FibrosisStage.F4)
+    ]
+
+    assert (max(smooth_mid_high) - min(smooth_mid_high)) >= 0.04
+    assert (max(textured_mid_high) - min(textured_mid_high)) >= 0.04
+
+    ordered_stages = (
+        FibrosisStage.F0,
+        FibrosisStage.F1,
+        FibrosisStage.F2,
+        FibrosisStage.F3,
+        FibrosisStage.F4,
+    )
+    smooth_vec = np.array([smooth.softmax_vector[s] for s in ordered_stages], dtype=np.float32)
+    textured_vec = np.array(
+        [textured.softmax_vector[s] for s in ordered_stages],
+        dtype=np.float32,
+    )
+    assert float(np.linalg.norm(smooth_vec - textured_vec, ord=1)) >= 0.20
 
 
 def test_validate_stage2_artifacts_missing_temperature_outside_dev(tmp_path: Path):

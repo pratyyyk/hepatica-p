@@ -1,11 +1,11 @@
-# ml/configs
+# ml/configs Folder Guide
 
-Training configuration files.
+## Purpose
+YAML training/evaluation configurations.
 
-- `train_stage1.yaml`: Stage 1 (tabular) config (data paths, gates, artifact output directory).
-- `train.yaml`: Stage 2 (image) config (data root, hyperparameters, artifact output directory).
-
-Why configs:
-- Makes runs reproducible and reviewable.
-- Keeps scripts thin and avoids hardcoding paths in code.
-
+## Files
+| File | What it does |
+|---|---|
+| `train.yaml` | YAML configuration for workflows or training pipelines. |
+| `train_stage1.yaml` | YAML configuration for workflows or training pipelines. |
+| `train_stage3.yaml` | YAML configuration for workflows or training pipelines. |

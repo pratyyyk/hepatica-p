@@ -1,12 +1,14 @@
-# frontend/app/(app)/assessments
+# frontend/app/(app)/assessments Folder Guide
 
-Assessment workflows (doctor-facing).
+## Purpose
+Assessment route group for Stage 1, Stage 2, and Stage 3 screens.
 
-Routes:
-- `stage1/`: clinical risk triage form + result viewer.
-- `stage2/`: upload scan + run fibrosis inference + generate knowledge/report.
+## Subfolders
+| Folder | Role |
+|---|---|
+| `stage1` | Stage 1 clinical score form and result view. |
+| `stage2` | Stage 2 scan upload/inference/knowledge/report workflow. |
+| `stage3` | Stage 3 stiffness, multimodal risk, alerts, and explainability UI. |
 
-Why split Stage 1 and Stage 2:
-- Stage 1 is fast and tabular; Stage 2 is file-based and has safety/quality gating.
-- Separating pages keeps interactions focused and improves demo clarity.
-
+## Files
+This folder has no direct code/config files; see subfolder READMEs for details.

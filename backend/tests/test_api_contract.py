@@ -139,6 +139,9 @@ def test_knowledge_and_report_generation(client):
     report = report_resp.json()
     assert report["report_id"]
     assert report["report_json"]["disclaimer"]
+    assert "stage_availability" in report["report_json"]
+    assert report["report_json"]["stage_availability"]["stage3"]["status"] in {"AVAILABLE", "UNAVAILABLE", "DISABLED"}
+    assert "integrated_assessment" in report["report_json"]
 
 
 def test_csrf_missing_rejected(client):
@@ -180,6 +183,73 @@ def test_non_owner_cannot_access_patient(client):
     dev_login(client, "doctor2@example.com")
     resp = client.get(f"/api/v1/patients/{patient['id']}")
     assert_status(resp, 404)
+
+
+def test_patient_delete_removes_patient_and_related_rows(client):
+    csrf_headers = dev_login(client, "doctor-delete@example.com")
+
+    patient_resp = client.post(
+        "/api/v1/patients",
+        json={"external_id": "P-DEL-001", "sex": "F", "age": 46, "bmi": 27.4, "type2dm": True},
+        headers=csrf_headers,
+    )
+    assert_status(patient_resp, 201)
+    patient = patient_resp.json()
+
+    clinical_resp = client.post(
+        "/api/v1/assessments/clinical",
+        json={
+            "patient_id": patient["id"],
+            "ast": 88,
+            "alt": 62,
+            "platelets": 145,
+            "ast_uln": 40,
+            "age": 46,
+            "bmi": 27.4,
+            "type2dm": True,
+        },
+        headers=csrf_headers,
+    )
+    assert_status(clinical_resp, 200)
+
+    report_resp = client.post(
+        "/api/v1/reports",
+        json={"patient_id": patient["id"]},
+        headers=csrf_headers,
+    )
+    assert_status(report_resp, 200)
+
+    delete_resp = client.delete(f"/api/v1/patients/{patient['id']}", headers=csrf_headers)
+    assert_status(delete_resp, 204)
+
+    get_resp = client.get(f"/api/v1/patients/{patient['id']}")
+    assert_status(get_resp, 404)
+
+    recreate_resp = client.post(
+        "/api/v1/patients",
+        json={"external_id": "P-DEL-001", "sex": "F", "age": 47, "bmi": 26.9, "type2dm": False},
+        headers=csrf_headers,
+    )
+    assert_status(recreate_resp, 201)
+
+
+def test_non_owner_cannot_delete_patient(client):
+    headers_user1 = dev_login(client, "doctor-delete-owner@example.com")
+    patient_resp = client.post(
+        "/api/v1/patients",
+        json={"external_id": "P-DEL-002", "sex": "M", "age": 52, "bmi": 30.2, "type2dm": False},
+        headers=headers_user1,
+    )
+    assert_status(patient_resp, 201)
+    patient = patient_resp.json()
+
+    headers_user2 = dev_login(client, "doctor-delete-other@example.com")
+    delete_resp = client.delete(f"/api/v1/patients/{patient['id']}", headers=headers_user2)
+    assert_status(delete_resp, 404)
+
+    dev_login(client, "doctor-delete-owner@example.com")
+    get_resp = client.get(f"/api/v1/patients/{patient['id']}")
+    assert_status(get_resp, 200)
 
 
 def test_dev_login_blocked_when_not_enabled(client):

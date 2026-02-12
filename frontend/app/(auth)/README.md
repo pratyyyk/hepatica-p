@@ -1,9 +1,12 @@
-# frontend/app/(auth)
+# frontend/app/(auth) Folder Guide
 
-Authentication routes.
+## Purpose
+Authentication route group.
 
-Current:
-- `/login`: demo doctor login (dev-login) + helpful onboarding info.
+## Subfolders
+| Folder | Role |
+|---|---|
+| `login` | Clinician login experience (demo + provider auth modes). |
 
-Reason: the prototype optimizes for a fast demo; Firebase/Cognito remain backend-supported but optional for UI.
-
+## Files
+This folder has no direct code/config files; see subfolder READMEs for details.

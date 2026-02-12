@@ -1,9 +1,11 @@
-# scripts
+# scripts Folder Guide
 
-Repo-level helper scripts used by the root `Makefile`.
+## Purpose
+Repository-level release and deployment helper scripts.
 
-- `scripts/release_preflight.sh`: runs tests, smoke, Stage 3 monitoring dry-run, frontend checks, infra validation, and optional Docker build.
-- `scripts/staging_deploy.sh`: Terraform plan/apply helper.
-- `scripts/release_dry_run_pack.sh`: release dry-run evidence bundling.
-
-Reason: these scripts encode repeatable workflows and avoid hand-run “tribal knowledge” steps.
+## Files
+| File | What it does |
+|---|---|
+| `release_dry_run_pack.sh` | Release artifact dry-run pack workflow. |
+| `release_preflight.sh` | Cross-stack preflight: tests, smoke, Stage 3 dry-run, frontend build, infra validation. |
+| `staging_deploy.sh` | Terraform staging plan/apply orchestrator with health checks. |

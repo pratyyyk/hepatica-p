@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { HepaticaLogo } from "@/components/HepaticaLogo";
 import { Button, Card, CardHeader, Field, Input, Pill } from "@/components/ui";
 import { apiBase } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -23,17 +24,21 @@ export default function LoginPage() {
   const [health, setHealth] = useState<"idle" | "checking" | "ok" | "down">("idle");
 
   const authed = !!session?.authenticated;
-  const headline = useMemo(() => (authed ? "You are signed in" : "Sign in to the console"), [authed]);
+  const headline = useMemo(() => (authed ? "Session active" : "Sign in"), [authed]);
 
-  async function handleCustom(e: FormEvent) {
-    e.preventDefault();
+  async function startDemoLogin(email: string) {
     setError("");
     try {
-      await loginDev(customEmail.trim());
+      await loginDev(email);
       router.push("/patients");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }
+  }
+
+  async function handleCustom(e: FormEvent) {
+    e.preventDefault();
+    await startDemoLogin(customEmail.trim());
   }
 
   async function checkHealth() {
@@ -55,16 +60,25 @@ export default function LoginPage() {
   return (
     <main className="authWrap">
       <div className="authHero">
-        <div className="heroMark">H</div>
-        <h1 className="heroTitle">Hepatica</h1>
-        <p className="heroSubtitle">Clinical risk triage + fibrosis staging. Local-only demo flow.</p>
+        <div className="heroMark">
+          <HepaticaLogo size={52} />
+        </div>
+        <div>
+          <h1 className="heroTitle">Hepatica Console</h1>
+          <p className="heroSubtitle">Clinical liver risk assessment workspace for local evaluation workflows.</p>
+        </div>
         <div className="heroBadges">
+          <Pill tone="neutral">Environment: Local</Pill>
+          <Pill tone="neutral">Access: Clinician</Pill>
+          <Pill tone={health === "ok" ? "ok" : health === "down" ? "warn" : "neutral"}>
+            API {health === "ok" ? "Online" : health === "down" ? "Offline" : "Checking"}
+          </Pill>
         </div>
       </div>
 
       <div className="authGrid">
-        <Card>
-          <CardHeader title={headline} subtitle="Use demo doctors for 1-click login." />
+        <Card className="authCardMain">
+          <CardHeader title={headline} subtitle="Choose a clinician profile or use a local demo email." />
 
           {loading ? (
             <div className="empty">Checking session...</div>
@@ -74,19 +88,25 @@ export default function LoginPage() {
               <Button onClick={() => router.push("/patients")}>Go to Patients</Button>
             </div>
           ) : (
-            <div className="stack">
-              <div className="row">
-                <div className="muted">API: {apiBase}</div>
-                <Button
-                  tone="ghost"
-                  type="button"
-                  onClick={() => void checkHealth()}
-                  disabled={health === "checking"}
-                >
-                  {health === "checking" ? "Checking..." : "Check backend"}
-                </Button>
-                {health === "ok" ? <Pill tone="ok">Backend OK</Pill> : null}
-                {health === "down" ? <Pill tone="warn">Backend unreachable</Pill> : null}
+            <div className="stack authStack">
+              <div className="authSection">
+                <div className="authSectionHead">
+                  <div className="authSectionTitle">System Connection</div>
+                  <Button
+                    tone="ghost"
+                    type="button"
+                    onClick={() => void checkHealth()}
+                    disabled={health === "checking"}
+                  >
+                    {health === "checking" ? "Checking..." : "Check backend"}
+                  </Button>
+                </div>
+                <div className="authEndpoint">
+                  <span>API endpoint</span>
+                  <code>{apiBase}</code>
+                  {health === "ok" ? <Pill tone="ok">Connected</Pill> : null}
+                  {health === "down" ? <Pill tone="warn">Unreachable</Pill> : null}
+                </div>
               </div>
               {!showDevLogin ? (
                 <div className="status status-warn">
@@ -96,30 +116,31 @@ export default function LoginPage() {
                 </div>
               ) : (
                 <>
-                  <div className="demoList">
-                    {demoDoctors.map((doc) => (
-                      <button
-                        key={doc.email}
-                        type="button"
-                        className="demoCard"
-                        onClick={() => {
-                          setError("");
-                          void loginDev(doc.email)
-                            .then(() => router.push("/patients"))
-                            .catch((e) => setError(e instanceof Error ? e.message : "Login failed"));
-                        }}
-                      >
-                        <div className="demoName">{doc.name}</div>
-                        <div className="demoEmail">{doc.email}</div>
-                      </button>
-                    ))}
+                  <div className="authSection">
+                    <div className="authSectionTitle">Quick Sign-In</div>
+                    <div className="authSectionHint">Select a clinician profile</div>
+                    <div className="demoList">
+                      {demoDoctors.map((doc) => (
+                        <button
+                          key={doc.email}
+                          type="button"
+                          className="demoCard"
+                          onClick={() => void startDemoLogin(doc.email)}
+                        >
+                          <div className="demoName">{doc.name}</div>
+                          <div className="demoEmail">{doc.email}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <form onSubmit={handleCustom} className="stack">
-                    <Field label="Custom demo email" hint="Stored only in your local DB">
+                  <form onSubmit={handleCustom} className="authSection authInlineForm">
+                    <Field label="Custom demo email" hint="Stored only in local DB">
                       <Input value={customEmail} onChange={(e) => setCustomEmail(e.target.value)} />
                     </Field>
-                    <Button type="submit">Login</Button>
+                    <div className="authActions">
+                      <Button type="submit">Enter Console</Button>
+                    </div>
                   </form>
                 </>
               )}
@@ -129,29 +150,40 @@ export default function LoginPage() {
           )}
         </Card>
 
-        <Card>
-          <CardHeader title="What you can demo" subtitle="A clean end-to-end flow in minutes." />
-          <div className="stack">
-            <div className="checkRow">
-              <span className="checkDot" />
-              Create and manage patients
-            </div>
-            <div className="checkRow">
-              <span className="checkDot" />
-              Run Stage 1 clinical assessment
-            </div>
-            <div className="checkRow">
-              <span className="checkDot" />
-              Upload a scan locally + run Stage 2 inference
-            </div>
-            <div className="checkRow">
-              <span className="checkDot" />
-              Generate a report PDF and open it in-browser
-            </div>
-            <div className="checkRow">
-              <span className="checkDot" />
-              Review the patient timeline
-            </div>
+        <Card className="authCardSide">
+          <CardHeader title="Workflow Overview" subtitle="Recommended sequence for the full assessment run." />
+          <ol className="demoFlow">
+            <li>
+              <span className="demoStepNum">1</span>
+              <div>
+                <strong>Authenticate clinician session</strong>
+                <p>Use one-click credentials or a local demo email.</p>
+              </div>
+            </li>
+            <li>
+              <span className="demoStepNum">2</span>
+              <div>
+                <strong>Register or select a patient</strong>
+                <p>Capture baseline demographics and risk context.</p>
+              </div>
+            </li>
+            <li>
+              <span className="demoStepNum">3</span>
+              <div>
+                <strong>Run Stage 1, Stage 2, and Stage 3</strong>
+                <p>Review clinical scores, imaging risk, and monitoring output.</p>
+              </div>
+            </li>
+            <li>
+              <span className="demoStepNum">4</span>
+              <div>
+                <strong>Generate report and review timeline</strong>
+                <p>Export consolidated findings with explainability context.</p>
+              </div>
+            </li>
+          </ol>
+          <div className="authTip">
+            This demo keeps data in your local database and does not transmit patient data externally.
           </div>
         </Card>
       </div>

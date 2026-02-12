@@ -15,13 +15,16 @@ from app.api.deps import RequestUser, assert_patient_owned_by_user, get_request_
 from app.core.config import Settings, get_settings
 from app.core.enums import FibrosisStage
 from app.core.rate_limit import limiter, user_or_ip_key
-from app.db.models import ClinicalAssessment, FibrosisPrediction, Report
-from app.db.models import Stage3Assessment
+from app.db.models import ClinicalAssessment, FibrosisPrediction, Report, ScanAsset
+from app.db.models import RiskAlert, Stage3Assessment, Stage3Explanation
 from app.db.session import get_db
 from app.schemas.report import ReportCreate, ReportRead
 from app.services.audit import write_audit_log
+from app.services.dicom import maybe_convert_dicom
+from app.services.fibrosis_inference import fetch_scan_bytes
 from app.services.knowledge import retrieve_chunks, synthesize_blocks
 from app.services.report import build_report_payload, render_pdf, upload_pdf
+from app.services.stage3 import Stage3Error, run_stage3_assessment
 from app.services.timeline import append_timeline_event
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -54,6 +57,8 @@ def create_report(
     clinical = None
     fibrosis = None
     stage3 = None
+    stage3_explanation = None
+    stage3_failure_reason: str | None = None
 
     if parsed_payload.clinical_assessment_id:
         clinical = db.get(ClinicalAssessment, parsed_payload.clinical_assessment_id)
@@ -81,12 +86,60 @@ def create_report(
         stage3 = db.get(Stage3Assessment, parsed_payload.stage3_assessment_id)
         if not stage3 or stage3.patient_id != parsed_payload.patient_id:
             raise HTTPException(status_code=404, detail="Stage 3 assessment not found")
+    elif cfg.stage3_enabled and (clinical is not None or fibrosis is not None):
+        try:
+            stage3, stage3_explanation, _created_alerts = run_stage3_assessment(
+                db=db,
+                cfg=cfg,
+                patient_id=parsed_payload.patient_id,
+                performed_by=req_user.db_user.id,
+                clinical_assessment_id=clinical.id if clinical else None,
+                fibrosis_prediction_id=fibrosis.id if fibrosis else None,
+                stiffness_measurement_id=None,
+            )
+        except Stage3Error as exc:
+            # Report generation should still succeed even if Stage 3 cannot be computed.
+            stage3 = None
+            stage3_failure_reason = str(exc)
     if stage3 is None:
         stage3 = db.scalar(
             select(Stage3Assessment)
             .where(Stage3Assessment.patient_id == parsed_payload.patient_id)
             .order_by(Stage3Assessment.created_at.desc())
         )
+
+    scan_asset = None
+    if fibrosis and fibrosis.scan_asset_id:
+        scan_asset = db.get(ScanAsset, fibrosis.scan_asset_id)
+    if scan_asset is None:
+        scan_asset = db.scalar(
+            select(ScanAsset)
+            .where(ScanAsset.patient_id == parsed_payload.patient_id)
+            .order_by(ScanAsset.created_at.desc())
+        )
+
+    scan_preview_bytes: bytes | None = None
+    scan_preview: dict[str, str | bool | None] = {
+        "scan_asset_id": scan_asset.id if scan_asset else None,
+        "content_type": scan_asset.content_type if scan_asset else None,
+        "status": scan_asset.status if scan_asset else None,
+        "included_in_pdf": False,
+        "reason": "No uploaded scan available for this patient." if scan_asset is None else None,
+    }
+    if scan_asset is not None:
+        try:
+            raw_scan = fetch_scan_bytes(object_key=scan_asset.object_key, settings=cfg)
+            scan_preview_bytes = maybe_convert_dicom(
+                image_bytes=raw_scan,
+                content_type=scan_asset.content_type,
+            )
+            scan_preview["included_in_pdf"] = True
+            scan_preview["reason"] = "Latest uploaded scan included in PDF preview."
+        except Exception:
+            scan_preview["reason"] = (
+                "Scan preview could not be embedded due to retrieval or "
+                "format conversion limitations."
+            )
 
     stage = fibrosis.top1_stage if fibrosis else None
     stage_enum = FibrosisStage(stage) if stage else None
@@ -95,6 +148,19 @@ def create_report(
     knowledge_blocks = synthesize_blocks(
         fibrosis_stage=stage_enum,
         retrieved=retrieved,
+    )
+
+    if stage3 is not None and stage3_explanation is None:
+        stage3_explanation = db.scalar(
+            select(Stage3Explanation).where(Stage3Explanation.stage3_assessment_id == stage3.id)
+        )
+    stage3_alert_rows = list(
+        db.scalars(
+            select(RiskAlert)
+            .where(RiskAlert.patient_id == parsed_payload.patient_id)
+            .order_by(RiskAlert.created_at.desc())
+            .limit(10)
+        ).all()
     )
 
     report_json = build_report_payload(
@@ -142,7 +208,31 @@ def create_report(
             if stage3
             else None
         ),
+        stage3_explanation=(
+            {
+                "local_feature_contrib_json": stage3_explanation.local_feature_contrib_json,
+                "global_reference_version": stage3_explanation.global_reference_version,
+                "trend_points_json": stage3_explanation.trend_points_json,
+            }
+            if stage3_explanation
+            else None
+        ),
+        stage3_alerts=[
+            {
+                "id": alert.id,
+                "alert_type": alert.alert_type,
+                "severity": alert.severity,
+                "status": alert.status,
+                "score": alert.score,
+                "threshold": alert.threshold,
+                "created_at": alert.created_at.isoformat() if alert.created_at else None,
+            }
+            for alert in stage3_alert_rows
+        ],
         knowledge_blocks=knowledge_blocks,
+        scan_preview=scan_preview,
+        stage3_enabled=cfg.stage3_enabled,
+        stage3_failure_reason=stage3_failure_reason,
     )
 
     row = Report(
@@ -157,7 +247,7 @@ def create_report(
     db.add(row)
     db.flush()
 
-    pdf_bytes = render_pdf(report_json)
+    pdf_bytes = render_pdf(report_json, scan_preview_bytes=scan_preview_bytes)
     object_key = upload_pdf(report_id=row.id, pdf_bytes=pdf_bytes, settings=cfg)
     row.pdf_object_key = object_key
 

@@ -1,9 +1,7 @@
-# data/Images
+# data/Images Folder Guide
 
-Demo/training images for Stage 2.
+## Purpose
+Image datasets grouped by fibrosis class labels F0-F4.
 
-Expected structure:
-- `F0/`, `F1/`, `F2/`, `F3/`, `F4/`
-
-Reason: this matches `torchvision.datasets.ImageFolder` conventions.
-
+## Files
+This folder has no direct code/config files; see subfolder READMEs for details.

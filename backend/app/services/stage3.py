@@ -358,7 +358,7 @@ def run_stage3_assessment(
     stiffness_measurement_id: str | None = None,
 ) -> tuple[Stage3Assessment, Stage3Explanation, list[RiskAlert]]:
     if not cfg.stage3_enabled:
-        raise Stage3Error("Stage 3 is disabled")
+        raise Stage3Error("Stage 3 is disabled. Set STAGE3_ENABLED=true in backend/.env and restart backend.")
 
     clinical = _resolve_selected_or_latest(
         db,

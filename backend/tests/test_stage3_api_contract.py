@@ -145,5 +145,7 @@ def test_stage3_feature_flag_returns_404_when_disabled(client):
 
         resp = client.get(f"/api/v1/patients/{patient['id']}/alerts")
         _assert_status(resp, 404)
+        payload = resp.json()
+        assert "STAGE3_ENABLED=true" in payload.get("detail", "")
     finally:
         cfg.stage3_enabled = original_stage3

@@ -1,7 +1,7 @@
-# frontend/app/(app)/reports Folder Guide
+# frontend/app/(app)/assessments/stage2 Folder Guide
 
 ## Purpose
-Report generation and PDF retrieval page.
+Stage 2 scan upload/inference/knowledge/report workflow.
 
 ## Files
 | File | What it does |

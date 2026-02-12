@@ -1,7 +1,7 @@
-# frontend/app/(app)/reports Folder Guide
+# frontend/app/(app)/assessments/stage1 Folder Guide
 
 ## Purpose
-Report generation and PDF retrieval page.
+Stage 1 clinical score form and result view.
 
 ## Files
 | File | What it does |

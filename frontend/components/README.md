@@ -1,11 +1,12 @@
-# frontend/components
+# frontend/components Folder Guide
 
-Reusable UI building blocks.
+## Purpose
+Reusable UI components and shell/navigation primitives.
 
-Key components:
-- `AppShell.tsx`: sidebar + topbar + auth guard
-- `ui.tsx`: Card/Button/Field primitives (simple and style-driven)
-- `Timeline.tsx`: timeline visualization + inline status
-
-Reason: primitives keep pages small and encourage consistent interaction patterns.
-
+## Files
+| File | What it does |
+|---|---|
+| `AppShell.tsx` | Main app shell with navigation and workspace chrome. |
+| `HepaticaLogo.tsx` | Brand/logo component used across UI views. |
+| `Timeline.tsx` | Timeline UI components for patient event history. |
+| `ui.tsx` | TypeScript/React module for UI behavior and state handling. |

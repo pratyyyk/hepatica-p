@@ -1,22 +1,12 @@
-# infra (Terraform)
+# infra Folder Guide
 
-Terraform configuration for a legacy AWS-backed staging environment.
+## Purpose
+Infrastructure-as-code files and environment validation helpers.
 
-Why it exists:
-- supports cloud deployments when needed
-- keeps infrastructure changes versioned and reviewable
+## Subfolders
+| Folder | Role |
+|---|---|
+| `scripts` | Shell helpers for infrastructure validation. |
 
-Why it is optional:
-- the prototype is local-first and can run end-to-end without AWS.
-
-Common commands:
-
-```bash
-cd infra
-./scripts/validate.sh
-```
-
-Top-level helpers:
-- `make staging-plan`
-- `make staging-apply`
-
+## Files
+This folder has no direct code/config files; see subfolder READMEs for details.

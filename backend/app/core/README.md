@@ -1,15 +1,14 @@
-# backend/app/core
+# backend/app/core Folder Guide
 
-Cross-cutting policies and configuration.
+## Purpose
+Core runtime configuration, enums, security, and startup guardrails.
 
-Contents:
-- `config.py`: typed Settings (env-driven) with local-first defaults.
-- `security.py`: auth verification, session loading, role gating.
-- `rate_limit.py`: SlowAPI limiter configuration.
-- `startup_guardrails.py`: fail-fast checks for unsafe/misconfigured environments.
-- `enums.py`: shared domain enums (risk tiers, stages, flags).
-
-Why this is centralized:
-- It avoids duplicating policy in multiple endpoints.
-- It makes environment behavior explicit and testable (dev vs non-dev).
-
+## Files
+| File | What it does |
+|---|---|
+| `__init__.py` | Package marker and module export surface. |
+| `config.py` | Runtime configuration and environment variable binding. |
+| `enums.py` | Python module implementing domain-specific logic for this folder. |
+| `rate_limit.py` | Python module implementing domain-specific logic for this folder. |
+| `security.py` | Security checks, token validation, and access control logic. |
+| `startup_guardrails.py` | Python module implementing domain-specific logic for this folder. |

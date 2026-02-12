@@ -1,10 +1,11 @@
-# frontend/lib
+# frontend/lib Folder Guide
 
-Frontend client utilities.
+## Purpose
+Frontend API client, session state, and active patient helpers.
 
-- `api.ts`: backend fetch wrapper + upload helper (handles CSRF/cookies for backend uploads)
-- `session.tsx`: session bootstrap + login/logout helpers
-- `activePatient.ts`: persistent active patient selection (localStorage)
-
-Reason: centralizing fetch/session logic avoids duplicating security-sensitive behaviors across pages.
-
+## Files
+| File | What it does |
+|---|---|
+| `activePatient.ts` | TypeScript/React module for UI behavior and state handling. |
+| `api.ts` | Typed frontend API client helpers and fetch wrappers. |
+| `session.tsx` | Client session context and auth state management. |

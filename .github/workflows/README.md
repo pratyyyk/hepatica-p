@@ -1,8 +1,11 @@
-# .github/workflows
+# .github/workflows Folder Guide
 
-GitHub Actions workflows live here.
+## Purpose
+GitHub Actions pipelines for CI, ML validation, and release readiness.
 
-Why CI matters for this repo:
-- The prototype touches frontend, backend, and ML interfaces; CI prevents accidental contract drift.
-- It enforces that "demo happy path" stays runnable as the code evolves.
-
+## Files
+| File | What it does |
+|---|---|
+| `ci.yml` | Primary CI workflow for backend/frontend checks and baseline quality gates. |
+| `ml-stage1.yml` | Stage 1 ML-specific training/evaluation workflow automation. |
+| `release-readiness.yml` | Release readiness checks before packaging/deployment. |

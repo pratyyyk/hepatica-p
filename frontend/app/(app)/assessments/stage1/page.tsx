@@ -39,8 +39,8 @@ export default function Stage1Page() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (activePatientId && !patientId) setPatientId(activePatientId);
-  }, [activePatientId, patientId]);
+    if (activePatientId) setPatientId(activePatientId);
+  }, [activePatientId]);
 
   async function runStage1(e: FormEvent) {
     e.preventDefault();
